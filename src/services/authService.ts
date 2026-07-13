@@ -1,5 +1,6 @@
 import { DB_TABLES, SESSION_STORAGE_KEY } from "../constants";
 import { storageService } from "./storageService";
+import { passwordService } from "./passwordService";
 import type { Session, User } from "../types";
 
 function getLegacyUsername(user: User & { email?: string }): string {
@@ -10,13 +11,27 @@ export const authService = {
   async login(username: string, password: string, rememberMe: boolean): Promise<User> {
     const users = await storageService.getAll<(User & { email?: string })>(DB_TABLES.USERS);
     const user = users.find(
-      (u) => getLegacyUsername(u).toLowerCase() === username.trim().toLowerCase() && u.password === password
+      (u) => getLegacyUsername(u).toLowerCase() === username.trim().toLowerCase(),
     );
     if (!user) {
       throw new Error("Username atau password salah");
     }
+    const passwordValid = await passwordService.verifyPassword(
+      password,
+      user.password,
+      user.passwordSalt,
+    );
+    if (!passwordValid) {
+      throw new Error("Username atau password salah");
+    }
     if (!user.active) {
       throw new Error("Akun ini sudah dinonaktifkan");
+    }
+    if (!user.passwordSalt) {
+      const credentials = await passwordService.createCredentials(password);
+      await storageService.update<User>(DB_TABLES.USERS, user.id, credentials);
+      user.password = credentials.password;
+      user.passwordSalt = credentials.passwordSalt;
     }
     const session: Session = { userId: user.id, rememberMe, loginAt: new Date().toISOString() };
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));

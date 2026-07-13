@@ -19,12 +19,13 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const active: Record<string, boolean> = {};
-    MENU.forEach((item) => {
-      if (item.children?.some((c) => location.pathname === c.to))
-        active[item.label] = true;
-    });
-    setOpenGroups((prev) => ({ ...prev, ...active }));
+    const activeGroup = MENU.find((item) =>
+      item.children?.some((child) => location.pathname === child.to),
+    );
+
+    if (!activeGroup) return;
+
+    setOpenGroups({ [activeGroup.label]: true });
   }, [location.pathname]);
 
   if (!user) return null;
@@ -37,7 +38,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         </div>
         <div>
           <p className="text-sm font-bold leading-none text-slate-900 dark:text-white">
-            Kasirku
+            Angkringan POS
           </p>
           <p className="mt-1 text-[11px] text-slate-400">Point of Sales</p>
         </div>
@@ -81,10 +82,9 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             <div key={item.label}>
               <button
                 onClick={() =>
-                  setOpenGroups((prev) => ({
-                    ...prev,
-                    [item.label]: !prev[item.label],
-                  }))
+                  setOpenGroups((prev) =>
+                    prev[item.label] ? {} : { [item.label]: true },
+                  )
                 }
                 className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
               >

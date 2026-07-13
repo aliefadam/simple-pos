@@ -9,7 +9,11 @@ export const expenseService = {
   async getAll(): Promise<Expense[]> {
     return (await storageService
       .getAll<Expense>(DB_TABLES.EXPENSES))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        const byDate = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (byDate !== 0) return byDate;
+        return new Date(b.createdAt ?? b.date).getTime() - new Date(a.createdAt ?? a.date).getTime();
+      });
   },
 
   async getToday(): Promise<Expense[]> {
@@ -23,7 +27,11 @@ export const expenseService = {
   },
 
   async create(data: Omit<Expense, "id">): Promise<Expense> {
-    const expense: Expense = { ...data, id: uuid() };
+    const expense: Expense = {
+      ...data,
+      id: uuid(),
+      createdAt: data.createdAt ?? new Date().toISOString(),
+    };
     return storageService.insert(DB_TABLES.EXPENSES, expense);
   },
 

@@ -7,6 +7,7 @@ export interface User {
   name: string;
   username: string;
   password: string;
+  passwordSalt?: string;
   role: Role;
   avatar?: string;
   active: boolean;
@@ -78,6 +79,7 @@ export interface StockMovement {
 export interface Expense {
   id: string;
   date: string;
+  createdAt?: string;
   category: string;
   amount: number;
   note: string;

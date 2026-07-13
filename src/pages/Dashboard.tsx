@@ -69,9 +69,11 @@ const statConfig = [
 ] as const;
 
 const TONE_CLASSES: Record<string, string> = {
-  indigo: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
+  indigo:
+    "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400",
   blue: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
-  green: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+  green:
+    "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   amber: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
   red: "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400",
 };
@@ -184,29 +186,6 @@ export default function Dashboard() {
             })}
       </div>
 
-      {isOwner && databaseStatus && (
-        <Card className="slide-up p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Status Database
-              </p>
-              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
-                {databaseStatus.connected
-                  ? "Supabase Connected"
-                  : "Supabase Not Connected"}
-              </p>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {databaseStatus.message}
-              </p>
-            </div>
-            <Badge tone={databaseStatus.connected ? "green" : "red"}>
-              {databaseStatus.connected ? "Connected" : "Disconnected"}
-            </Badge>
-          </div>
-        </Card>
-      )}
-
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="slide-up xl:col-span-2">
           <CardHeader>
@@ -231,7 +210,11 @@ export default function Dashboard() {
                 >
                   <defs>
                     <linearGradient id="colorOmset" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
+                      <stop
+                        offset="5%"
+                        stopColor="#6366f1"
+                        stopOpacity={0.35}
+                      />
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
@@ -288,10 +271,16 @@ export default function Dashboard() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))
             ) : topProducts.length === 0 ? (
-              <EmptyState icon="fi fi-rr-chart-pie" title="Belum ada penjualan" />
+              <EmptyState
+                icon="fi fi-rr-chart-pie"
+                title="Belum ada penjualan"
+              />
             ) : (
               topProducts.map((product, idx) => (
-                <div key={product.productId} className="flex items-center gap-3">
+                <div
+                  key={product.productId}
+                  className="flex items-center gap-3"
+                >
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                     {idx + 1}
                   </span>
@@ -331,7 +320,10 @@ export default function Dashboard() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))
             ) : recent.length === 0 ? (
-              <EmptyState icon="fi fi-rr-time-past" title="Belum ada aktivitas" />
+              <EmptyState
+                icon="fi fi-rr-time-past"
+                title="Belum ada aktivitas"
+              />
             ) : (
               recent.map((tx) => (
                 <div

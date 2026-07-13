@@ -13,7 +13,11 @@ import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { expenseService } from "../../services/expenseService";
 import { EXPENSE_CATEGORIES } from "../../constants";
-import { formatCurrency, formatDate, formatDateInput } from "../../utils/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateInput,
+} from "../../utils/format";
 import type { Expense } from "../../types";
 
 const PAGE_SIZE = 8;
@@ -44,6 +48,7 @@ export default function Pengeluaran() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [totalThisMonth, setTotalThisMonth] = useState(0);
   const [totalToday, setTotalToday] = useState(0);
 
@@ -73,12 +78,16 @@ export default function Pengeluaran() {
 
   const filtered = useMemo(
     () =>
-      expenses.filter(
-        (e) =>
-          e.note.toLowerCase().includes(search.toLowerCase()) ||
-          e.category.toLowerCase().includes(search.toLowerCase())
-      ),
-    [expenses, search]
+      expenses
+        .filter(
+          (e) =>
+            e.note.toLowerCase().includes(search.toLowerCase()) ||
+            e.category.toLowerCase().includes(search.toLowerCase()),
+        )
+        .sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        ),
+    [expenses, search],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -95,14 +104,21 @@ export default function Pengeluaran() {
 
   function openCreate() {
     setEditing(null);
-    setForm({ ...emptyForm, category: availableCategories[0] ?? EXPENSE_CATEGORIES[0] });
+    setForm({
+      ...emptyForm,
+      category: availableCategories[0] ?? EXPENSE_CATEGORIES[0],
+    });
     setReceiptFile(null);
     setModalOpen(true);
   }
 
   function openEdit(exp: Expense) {
     if (!isOwner) {
-      showToast("warning", "Akses dibatasi", "Hanya owner yang dapat mengedit pengeluaran");
+      showToast(
+        "warning",
+        "Akses dibatasi",
+        "Hanya owner yang dapat mengedit pengeluaran",
+      );
       return;
     }
     setEditing(exp);
@@ -136,6 +152,7 @@ export default function Pengeluaran() {
   }
 
   async function handleSubmit() {
+    if (submitting) return;
     if (!form.amount || !form.note.trim()) {
       showToast("error", "Lengkapi data pengeluaran");
       return;
@@ -145,42 +162,77 @@ export default function Pengeluaran() {
       return;
     }
     if (!isOwner && !availableCategories.includes(form.category)) {
-      showToast("warning", "Kategori dibatasi", "Karyawan tidak dapat memilih kategori ini");
+      showToast(
+        "warning",
+        "Kategori dibatasi",
+        "Karyawan tidak dapat memilih kategori ini",
+      );
       return;
     }
-    const uploadedReceipt = receiptFile
-      ? await expenseService.uploadReceipt(receiptFile)
-      : { receiptImage: form.receiptImage, receiptImageName: form.receiptImageName };
-    const payload = {
-      date: new Date(form.date).toISOString(),
-      category: form.category,
-      amount: Number(form.amount),
-      note: form.note,
-      createdBy: user?.name ?? "Owner",
-      receiptImage: uploadedReceipt.receiptImage,
-      receiptImageName: uploadedReceipt.receiptImageName,
-    };
-    if (editing) {
-      if (!isOwner) {
-        showToast("warning", "Akses dibatasi", "Hanya owner yang dapat mengedit pengeluaran");
-        return;
+
+    setSubmitting(true);
+    try {
+      const uploadedReceipt = receiptFile
+        ? await expenseService.uploadReceipt(receiptFile)
+        : {
+            receiptImage: form.receiptImage,
+            receiptImageName: form.receiptImageName,
+          };
+      const payload = {
+        date: new Date(form.date).toISOString(),
+        category: form.category,
+        amount: Number(form.amount),
+        note: form.note,
+        createdBy: user?.name ?? "Owner",
+        receiptImage: uploadedReceipt.receiptImage,
+        receiptImageName: uploadedReceipt.receiptImageName,
+        createdAt: editing?.createdAt ?? new Date().toISOString(),
+      };
+      if (editing) {
+        if (!isOwner) {
+          showToast(
+            "warning",
+            "Akses dibatasi",
+            "Hanya owner yang dapat mengedit pengeluaran",
+          );
+          return;
+        }
+        await expenseService.update(editing.id, payload);
+        showToast("success", "Pengeluaran diperbarui");
+      } else {
+        await expenseService.create(payload);
+        showToast("success", "Pengeluaran ditambahkan");
       }
-      await expenseService.update(editing.id, payload);
-      showToast("success", "Pengeluaran diperbarui");
-    } else {
-      await expenseService.create(payload);
-      showToast("success", "Pengeluaran ditambahkan");
+      setModalOpen(false);
+      setPage(1);
+      await load();
+    } catch (error) {
+      showToast(
+        "error",
+        "Gagal menyimpan pengeluaran",
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat menyimpan data",
+      );
+    } finally {
+      setSubmitting(false);
     }
-    setModalOpen(false);
-    await load();
   }
 
   async function handleDelete(exp: Expense) {
     if (!isOwner) {
-      showToast("warning", "Akses dibatasi", "Hanya owner yang dapat menghapus pengeluaran");
+      showToast(
+        "warning",
+        "Akses dibatasi",
+        "Hanya owner yang dapat menghapus pengeluaran",
+      );
       return;
     }
-    const ok = await confirm({ title: "Hapus data pengeluaran ini?", danger: true, confirmLabel: "Ya, Hapus" });
+    const ok = await confirm({
+      title: "Hapus data pengeluaran ini?",
+      danger: true,
+      confirmLabel: "Ya, Hapus",
+    });
     if (!ok) return;
     await expenseService.remove(exp.id);
     await load();
@@ -192,7 +244,9 @@ export default function Pengeluaran() {
       <Breadcrumb items={[{ label: "Keuangan" }, { label: "Pengeluaran" }]} />
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Pengeluaran</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Pengeluaran
+          </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isOwner ? "Total bulan ini" : "Total hari ini"}:{" "}
             <span className="font-semibold text-slate-700 dark:text-slate-200">
@@ -233,27 +287,54 @@ export default function Pengeluaran() {
             </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={isOwner ? 5 : 4} />)
+                Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonRow key={i} cols={isOwner ? 5 : 4} />
+                ))
               ) : paginated.length === 0 ? (
                 <tr>
                   <td colSpan={isOwner ? 5 : 4}>
-                    <EmptyState icon="fi fi-rr-receipt" title="Belum ada pengeluaran" action={<Button size="sm" onClick={openCreate}>Tambah Pengeluaran</Button>} />
+                    <EmptyState
+                      icon="fi fi-rr-receipt"
+                      title="Belum ada pengeluaran"
+                      action={
+                        <Button size="sm" onClick={openCreate}>
+                          Tambah Pengeluaran
+                        </Button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : (
                 paginated.map((exp) => (
-                  <tr key={exp.id} className="border-b border-slate-50 transition hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/30">
-                    <td className="px-5 py-3 text-slate-500 dark:text-slate-400">{formatDate(exp.date)}</td>
-                    <td className="px-5 py-3"><Badge tone="indigo">{exp.category}</Badge></td>
-                    <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(exp.amount)}</td>
-                    <td className="px-5 py-3 text-slate-500 dark:text-slate-400">{exp.note}</td>
+                  <tr
+                    key={exp.id}
+                    className="border-b border-slate-50 transition hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/30"
+                  >
+                    <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
+                      {formatDate(exp.date)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <Badge tone="indigo">{exp.category}</Badge>
+                    </td>
+                    <td className="px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">
+                      {formatCurrency(exp.amount)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
+                      {exp.note}
+                    </td>
                     {isOwner && (
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openEdit(exp)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+                          <button
+                            onClick={() => openEdit(exp)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                          >
                             <i className="fi fi-rr-edit text-sm" />
                           </button>
-                          <button onClick={() => handleDelete(exp)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10">
+                          <button
+                            onClick={() => handleDelete(exp)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                          >
                             <i className="fi fi-rr-trash text-sm" />
                           </button>
                         </div>
@@ -265,7 +346,13 @@ export default function Pengeluaran() {
             </tbody>
           </table>
         </div>
-        <Pagination page={page} totalPages={totalPages} onChange={setPage} totalItems={filtered.length} pageSize={PAGE_SIZE} />
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onChange={setPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+        />
       </Card>
 
       <Modal
@@ -274,23 +361,59 @@ export default function Pengeluaran() {
         title={editing ? "Edit Pengeluaran" : "Tambah Pengeluaran"}
         footer={
           <>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Batal</Button>
-            <Button onClick={handleSubmit}>{editing ? "Simpan" : "Tambah"}</Button>
+            <Button
+              variant="outline"
+              onClick={() => setModalOpen(false)}
+              disabled={submitting}
+            >
+              Batal
+            </Button>
+            <Button onClick={handleSubmit} loading={submitting}>
+              {editing ? "Simpan" : "Tambah"}
+            </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input label="Tanggal" type="date" required value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
-          <Select label="Kategori" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+          <Input
+            label="Tanggal"
+            type="date"
+            required
+            value={form.date}
+            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+          />
+          <Select
+            label="Kategori"
+            value={form.category}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, category: e.target.value }))
+            }
+          >
             {availableCategories.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </Select>
-          <Input label="Nominal (Rp)" type="number" required value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder="50000" />
-          <Textarea label="Keterangan" required value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} placeholder="Contoh: Beli gas elpiji" />
+          <Input
+            label="Nominal (Rp)"
+            type="number"
+            required
+            value={form.amount}
+            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+            placeholder=""
+          />
+          <Textarea
+            label="Keterangan"
+            required
+            value={form.note}
+            onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+            placeholder=""
+          />
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Gambar Struk / Nota {!editing && <span className="text-red-500">*</span>}
+              Gambar Struk / Nota{" "}
+              {!editing && <span className="text-red-500">*</span>}
             </label>
             <input
               type="file"
@@ -299,7 +422,9 @@ export default function Pengeluaran() {
               className="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-indigo-600 hover:file:bg-indigo-100 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:file:bg-indigo-500/10 dark:file:text-indigo-300"
             />
             {form.receiptImageName && (
-              <p className="text-xs text-slate-400">File terpilih: {form.receiptImageName}</p>
+              <p className="text-xs text-slate-400">
+                File terpilih: {form.receiptImageName}
+              </p>
             )}
             {form.receiptImage && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/40">

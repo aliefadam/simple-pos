@@ -28,7 +28,7 @@ export default function Login() {
           showToast(
             "success",
             `Selamat datang, ${user.name}`,
-            "Anda berhasil masuk ke Kasirku POS",
+            "Anda berhasil masuk ke Angkringan POS",
           );
           navigate("/");
         })
@@ -73,7 +73,7 @@ export default function Login() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
               <i className="fi fi-rr-shop text-lg" />
             </div>
-            <span className="text-lg font-bold">Kasirku POS</span>
+            <span className="text-lg font-bold">Angkringan POS</span>
           </div>
 
           <div className="slide-up space-y-6">
@@ -88,7 +88,7 @@ export default function Login() {
           </div>
 
           <p className="text-xs text-indigo-200">
-            © {new Date().getFullYear()} Kasirku POS. Internal use only.
+            © {new Date().getFullYear()} Angkringan POS. Internal use only.
           </p>
         </div>
 
@@ -98,7 +98,7 @@ export default function Login() {
               <i className="fi fi-rr-shop text-lg" />
             </div>
             <span className="text-lg font-bold text-slate-900 dark:text-white">
-              Kasirku POS
+              Angkringan POS
             </span>
           </div>
 

@@ -1,5 +1,6 @@
 import { v4 as uuid } from "uuid";
 import { DB_TABLES, SETTINGS_ROW_ID } from "../constants";
+import { passwordService } from "../services/passwordService";
 import { storageService } from "../services/storageService";
 import type {
   User,
@@ -57,6 +58,18 @@ const USERS: User[] = [
     createdAt: dateAt(60, 8, 0),
   },
 ];
+
+async function buildUsers(): Promise<User[]> {
+  return Promise.all(
+    USERS.map(async (user) => {
+      const credentials = await passwordService.createCredentials(user.password);
+      return {
+        ...user,
+        ...credentials,
+      };
+    }),
+  );
+}
 
 const CATEGORIES: Category[] = [
   { id: "cat-makanan", name: "Makanan", icon: "fi-rr-bowl-rice", active: true, createdAt: dateAt(120, 8, 0) },
@@ -335,6 +348,7 @@ function buildExpenses(): Expense[] {
   return items.map((it) => ({
     id: uuid(),
     date: dateAt(it.daysAgo, randInt(8, 19), randInt(0, 59)),
+    createdAt: new Date().toISOString(),
     category: it.category,
     amount: it.amount,
     note: it.note,
@@ -355,7 +369,7 @@ export async function seedDatabaseIfNeeded(): Promise<void> {
   const users = await storageService.getAll<User>(DB_TABLES.USERS);
   if (users.length > 0) return;
 
-  await storageService.replaceAll(DB_TABLES.USERS, USERS);
+  await storageService.replaceAll(DB_TABLES.USERS, await buildUsers());
   await storageService.replaceAll(DB_TABLES.CATEGORIES, CATEGORIES);
   await storageService.replaceAll(DB_TABLES.PRODUCTS, PRODUCTS);
   await storageService.replaceAll(DB_TABLES.TRANSACTIONS, buildTransactions());

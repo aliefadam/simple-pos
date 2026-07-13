@@ -5,7 +5,6 @@ import { Breadcrumb } from "../../components/ui/Breadcrumb";
 import { useTheme } from "../../context/ThemeContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
-import { resetDummyData } from "../../dummy-data/seed";
 import { backupService } from "../../services/settingsService";
 import { cn } from "../../utils/cn";
 
@@ -14,19 +13,6 @@ export default function Tema() {
   const confirm = useConfirm();
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-
-  async function handleReset() {
-    const ok = await confirm({
-      title: "Reset data demo?",
-      message: "Semua data (produk, transaksi, pengeluaran, user) akan dikembalikan ke kondisi awal.",
-      danger: true,
-      confirmLabel: "Ya, Reset",
-    });
-    if (!ok) return;
-    await resetDummyData();
-    showToast("success", "Data demo berhasil direset");
-    setTimeout(() => window.location.reload(), 800);
-  }
 
   async function handleBackup() {
     await backupService.downloadBackup();
@@ -119,23 +105,6 @@ export default function Tema() {
             <input ref={fileRef} type="file" accept="application/json" onChange={handleRestore} className="hidden" id="restore-input" />
             <Button variant="outline" className="mt-3" icon="fi fi-rr-upload" onClick={() => fileRef.current?.click()}>
               Upload Backup
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Reset Data Demo</h3>
-        </CardHeader>
-        <CardBody>
-          <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-dashed border-red-200 bg-red-50/50 p-4 dark:border-red-500/30 dark:bg-red-500/5 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-sm font-semibold text-red-600 dark:text-red-400">Reset ke Data Awal</p>
-              <p className="mt-1 text-xs text-red-500/80 dark:text-red-400/70">Semua perubahan akan hilang dan diganti data dummy.</p>
-            </div>
-            <Button variant="danger" icon="fi fi-rr-refresh" onClick={handleReset}>
-              Reset Sekarang
             </Button>
           </div>
         </CardBody>

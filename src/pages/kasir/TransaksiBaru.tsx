@@ -15,7 +15,12 @@ import { categoryService } from "../../services/categoryService";
 import { transactionService } from "../../services/transactionService";
 import { formatCurrency } from "../../utils/format";
 import { cn } from "../../utils/cn";
-import type { Category, PaymentMethod, Product, Transaction } from "../../types";
+import type {
+  Category,
+  PaymentMethod,
+  Product,
+  Transaction,
+} from "../../types";
 
 export default function TransaksiBaru() {
   const { user } = useAuth();
@@ -34,17 +39,17 @@ export default function TransaksiBaru() {
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
   const [receipt, setReceipt] = useState<Transaction | null>(null);
-  const [shortcutHint, setShortcutHint] = useState(false);
   const [heldList, setHeldList] = useState<Transaction[]>([]);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
   async function loadData() {
-    const [activeProducts, activeCategories, heldTransactions] = await Promise.all([
-      productService.getActive(),
-      categoryService.getActive(),
-      transactionService.getHeld(),
-    ]);
+    const [activeProducts, activeCategories, heldTransactions] =
+      await Promise.all([
+        productService.getActive(),
+        categoryService.getActive(),
+        transactionService.getHeld(),
+      ]);
     setProducts(activeProducts);
     setCategories(activeCategories);
     setHeldList(heldTransactions);
@@ -90,7 +95,8 @@ export default function TransaksiBaru() {
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-      const matchCategory = activeCategory === "all" || p.categoryId === activeCategory;
+      const matchCategory =
+        activeCategory === "all" || p.categoryId === activeCategory;
       return matchSearch && matchCategory;
     });
   }, [products, search, activeCategory]);
@@ -103,7 +109,6 @@ export default function TransaksiBaru() {
   function handleAdd(product: Product) {
     if (product.trackStock && product.stock <= 0) return;
     cart.addItem(product);
-    showToast("info", `${product.name} ditambahkan`, undefined);
   }
 
   function resetCashFields() {
@@ -124,7 +129,11 @@ export default function TransaksiBaru() {
       status: "ditahan",
     });
     await loadData();
-    showToast("success", "Transaksi ditahan", "Anda bisa melanjutkannya nanti dari daftar hold");
+    showToast(
+      "success",
+      "Transaksi ditahan",
+      "Anda bisa melanjutkannya nanti dari daftar hold",
+    );
     handleReset();
   }
 
@@ -134,17 +143,26 @@ export default function TransaksiBaru() {
     if (paymentMethod === "tunai" && cash < grandTotal) return;
     setProcessing(true);
     setTimeout(async () => {
-      const tx = await transactionService.checkout(cart.items, paymentMethod, user, {
-        extraCharge: extraChargeValue,
-        cashReceived: paymentMethod === "tunai" ? cash : undefined,
-        status: "selesai",
-      });
+      const tx = await transactionService.checkout(
+        cart.items,
+        paymentMethod,
+        user,
+        {
+          extraCharge: extraChargeValue,
+          cashReceived: paymentMethod === "tunai" ? cash : undefined,
+          status: "selesai",
+        },
+      );
       await loadData();
       handleReset();
       setProcessing(false);
       setMobileCartOpen(false);
       setReceipt(tx);
-      showToast("success", "Pembayaran berhasil", `Transaksi ${tx.code} telah tersimpan`);
+      showToast(
+        "success",
+        "Pembayaran berhasil",
+        `Transaksi ${tx.code} telah tersimpan`,
+      );
     }, 500);
   }
 
@@ -163,16 +181,14 @@ export default function TransaksiBaru() {
     <div className="fade-in">
       <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Transaksi Baru</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pilih produk lalu proses pembayaran.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Transaksi Baru
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Pilih produk lalu proses pembayaran.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShortcutHint((v) => !v)}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            <i className="fi fi-rr-keyboard" /> Shortcut
-          </button>
           <button
             onClick={() => setHeldOpen(true)}
             className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -187,15 +203,6 @@ export default function TransaksiBaru() {
         </div>
       </div>
 
-      {shortcutHint && (
-        <div className="fade-in mb-4 flex flex-wrap gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-          <span><kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">/</kbd> Fokus pencarian</span>
-          <span><kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">F8</kbd> Tahan transaksi</span>
-          <span><kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">F9</kbd> Bayar</span>
-          <span><kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">Esc</kbd> Tutup keranjang mobile</span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -205,7 +212,7 @@ export default function TransaksiBaru() {
                 ref={searchRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari produk... (tekan '/')"
+                placeholder="Cari produk... "
                 className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
@@ -218,7 +225,7 @@ export default function TransaksiBaru() {
                 "shrink-0 rounded-full px-4 py-2 text-xs font-medium transition-all duration-200",
                 activeCategory === "all"
                   ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
-                  : "bg-white text-slate-500 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+                  : "bg-white text-slate-500 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800",
               )}
             >
               Semua
@@ -231,7 +238,7 @@ export default function TransaksiBaru() {
                   "shrink-0 rounded-full px-4 py-2 text-xs font-medium transition-all duration-200",
                   activeCategory === c.id
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20"
-                    : "bg-white text-slate-500 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+                    : "bg-white text-slate-500 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800",
                 )}
               >
                 <i className={`fi ${c.icon} mr-1.5`} />
@@ -247,12 +254,19 @@ export default function TransaksiBaru() {
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <EmptyState icon="fi fi-rr-search" title="Produk tidak ditemukan" description="Coba kata kunci atau kategori lain" />
+            <EmptyState
+              icon="fi fi-rr-search"
+              title="Produk tidak ditemukan"
+              description="Coba kata kunci atau kategori lain"
+            />
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((product) => {
                 const outOfStock = product.trackStock && product.stock <= 0;
-                const lowStock = product.trackStock && product.stock > 0 && product.stock <= 10;
+                const lowStock =
+                  product.trackStock &&
+                  product.stock > 0 &&
+                  product.stock <= 10;
                 return (
                   <button
                     key={product.id}
@@ -260,29 +274,49 @@ export default function TransaksiBaru() {
                     disabled={outOfStock}
                     className={cn(
                       "group scale-in overflow-hidden rounded-2xl border border-slate-200/70 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:hover:translate-y-0 dark:border-slate-800 dark:bg-slate-900",
-                      outOfStock && "grayscale-[0.95] opacity-75"
+                      outOfStock && "grayscale-[0.95] opacity-75",
                     )}
                   >
                     <div className="relative aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <ProductAvatar
                         name={product.name}
                         className={cn(
-                          "h-full w-full rounded-none text-4xl transition-transform duration-300 group-hover:scale-105"
+                          "h-full w-full rounded-none text-4xl transition-transform duration-300 group-hover:scale-105",
                         )}
                         textClassName="text-4xl"
                       />
                       <div className="absolute left-2 top-2">
-                        <Badge tone={!product.trackStock ? "slate" : outOfStock ? "red" : lowStock ? "amber" : "green"}>
-                          {!product.trackStock ? "Tanpa stok" : outOfStock ? "Habis" : `${product.stock} pcs`}
+                        <Badge
+                          tone={
+                            !product.trackStock
+                              ? "slate"
+                              : outOfStock
+                                ? "red"
+                                : lowStock
+                                  ? "amber"
+                                  : "green"
+                          }
+                        >
+                          {!product.trackStock
+                            ? "Tanpa stok"
+                            : outOfStock
+                              ? "Habis"
+                              : `${product.stock} pcs`}
                         </Badge>
                       </div>
                     </div>
                     <div className="p-3">
-                      <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{product.name}</p>
+                      <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                        {product.name}
+                      </p>
                       <div className="mt-1.5 flex items-center justify-between">
-                        <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(product.price)}</p>
+                        <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                          {formatCurrency(product.price)}
+                        </p>
                         {outOfStock ? (
-                          <span className="text-[10px] font-bold uppercase text-red-500">Habis</span>
+                          <span className="text-[10px] font-bold uppercase text-red-500">
+                            Habis
+                          </span>
                         ) : (
                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-500/10">
                             <i className="fi fi-rr-plus-small text-xs" />
@@ -331,11 +365,18 @@ export default function TransaksiBaru() {
             <i className="fi fi-rr-shopping-cart-check" />
             {cart.totalQty} item
           </span>
-          <span className="text-sm font-bold">{formatCurrency(grandTotal)}</span>
+          <span className="text-sm font-bold">
+            {formatCurrency(grandTotal)}
+          </span>
         </button>
       )}
 
-      <Modal open={mobileCartOpen} onClose={() => setMobileCartOpen(false)} title="Keranjang" size="md">
+      <Modal
+        open={mobileCartOpen}
+        onClose={() => setMobileCartOpen(false)}
+        title="Keranjang"
+        size="md"
+      >
         <div className="-m-6">
           <CartPanel
             items={cart.items}
@@ -359,18 +400,37 @@ export default function TransaksiBaru() {
         </div>
       </Modal>
 
-      <Modal open={heldOpen} onClose={() => setHeldOpen(false)} title="Transaksi Ditahan" size="md">
+      <Modal
+        open={heldOpen}
+        onClose={() => setHeldOpen(false)}
+        title="Transaksi Ditahan"
+        size="md"
+      >
         {heldList.length === 0 ? (
-          <EmptyState icon="fi fi-rr-time-quarter-past" title="Tidak ada transaksi ditahan" />
+          <EmptyState
+            icon="fi fi-rr-time-quarter-past"
+            title="Tidak ada transaksi ditahan"
+          />
         ) : (
           <div className="space-y-2">
             {heldList.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+              <div
+                key={tx.id}
+                className="flex items-center justify-between rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{tx.code}</p>
-                  <p className="text-xs text-slate-400">{tx.items.length} item · {formatCurrency(tx.total)}</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {tx.code}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {tx.items.length} item · {formatCurrency(tx.total)}
+                  </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => resumeHeld(tx)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => resumeHeld(tx)}
+                >
                   Lanjutkan
                 </Button>
               </div>
@@ -379,7 +439,11 @@ export default function TransaksiBaru() {
         )}
       </Modal>
 
-      <ReceiptModal open={!!receipt} onClose={() => setReceipt(null)} transaction={receipt} />
+      <ReceiptModal
+        open={!!receipt}
+        onClose={() => setReceipt(null)}
+        transaction={receipt}
+      />
     </div>
   );
 }

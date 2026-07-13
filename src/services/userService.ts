@@ -1,6 +1,7 @@
 import { v4 as uuid } from "uuid";
 import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
+import { passwordService } from "./passwordService";
 import type { User } from "../types";
 
 function normalizeUser(user: User & { email?: string }): User {
@@ -24,12 +25,35 @@ export const userService = {
   },
 
   async create(data: Omit<User, "id" | "createdAt">): Promise<User> {
-    const user: User = { ...data, username: data.username.trim(), id: uuid(), createdAt: new Date().toISOString() };
+    const credentials = await passwordService.createCredentials(data.password);
+    const user: User = {
+      ...data,
+      username: data.username.trim(),
+      id: uuid(),
+      createdAt: new Date().toISOString(),
+      ...credentials,
+    };
     return storageService.insert(DB_TABLES.USERS, user);
   },
 
   async update(id: string, patch: Partial<User>): Promise<User | undefined> {
-    const nextPatch = patch.username ? { ...patch, username: patch.username.trim() } : patch;
+    const normalizedPatch = patch.username
+      ? { ...patch, username: patch.username.trim() }
+      : patch;
+
+    if (normalizedPatch.password !== undefined) {
+      const credentials = await passwordService.createCredentials(
+        normalizedPatch.password,
+      );
+      return storageService.update<User>(DB_TABLES.USERS, id, {
+        ...normalizedPatch,
+        ...credentials,
+      });
+    }
+
+    const nextPatch = normalizedPatch.passwordSalt
+      ? normalizedPatch
+      : { ...normalizedPatch, passwordSalt: undefined };
     return storageService.update<User>(DB_TABLES.USERS, id, nextPatch);
   },
 
