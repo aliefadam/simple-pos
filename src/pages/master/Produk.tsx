@@ -41,17 +41,26 @@ export default function Produk() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  function load() {
-    setProducts(productService.getAll());
-    setCategories(categoryService.getAll());
+  async function load() {
+    const [allProducts, allCategories] = await Promise.all([
+      productService.getAll(),
+      categoryService.getAll(),
+    ]);
+    setProducts(allProducts);
+    setCategories(allCategories);
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      load();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await load();
+      if (active) setLoading(false);
     }, 350);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -89,7 +98,7 @@ export default function Produk() {
     setModalOpen(true);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.name.trim() || !form.categoryId || !form.price) {
       showToast("error", "Lengkapi data produk terlebih dahulu");
       return;
@@ -104,14 +113,14 @@ export default function Produk() {
       active: form.active,
     };
     if (editing) {
-      productService.update(editing.id, payload);
+      await productService.update(editing.id, payload);
       showToast("success", "Produk diperbarui");
     } else {
-      productService.create(payload);
+      await productService.create(payload);
       showToast("success", "Produk ditambahkan");
     }
     setModalOpen(false);
-    load();
+    await load();
   }
 
   async function handleDelete(product: Product) {
@@ -122,8 +131,8 @@ export default function Produk() {
       confirmLabel: "Ya, Hapus",
     });
     if (!ok) return;
-    productService.remove(product.id);
-    load();
+    await productService.remove(product.id);
+    await load();
     showToast("success", "Produk dihapus");
   }
 

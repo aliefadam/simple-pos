@@ -3,9 +3,26 @@ import { Button } from "./ui/Button";
 import { formatCurrency, formatDate } from "../utils/format";
 import { settingsService } from "../services/settingsService";
 import type { Transaction } from "../types";
+import { useEffect, useState } from "react";
+import type { BusinessProfile } from "../types";
 
 export function ReceiptModal({ open, onClose, transaction }: { open: boolean; onClose: () => void; transaction: Transaction | null }) {
-  const business = settingsService.get().businessProfile;
+  const [business, setBusiness] = useState<BusinessProfile>({
+    name: "Usaha Saya",
+    address: "-",
+    phone: "-",
+    footerNote: "Terima kasih atas kunjungan Anda",
+  });
+
+  useEffect(() => {
+    let active = true;
+    settingsService.get().then((settings) => {
+      if (active) setBusiness(settings.businessProfile);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (!transaction) return null;
 

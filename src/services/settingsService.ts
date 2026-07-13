@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES, SETTINGS_ROW_ID } from "../constants";
 import { storageService } from "./storageService";
 import type { AppSettings } from "../types";
 
@@ -12,29 +12,28 @@ const DEFAULT: AppSettings = {
 };
 
 export const settingsService = {
-  get(): AppSettings {
-    return storageService.getObject<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT);
+  async get(): Promise<AppSettings> {
+    return storageService.getObject<AppSettings>(DB_TABLES.SETTINGS, SETTINGS_ROW_ID, DEFAULT);
   },
 
-  update(patch: Partial<AppSettings["businessProfile"]>): AppSettings {
-    const current = this.get();
+  async update(patch: Partial<AppSettings["businessProfile"]>): Promise<AppSettings> {
+    const current = await this.get();
     const updated: AppSettings = {
       ...current,
       businessProfile: { ...current.businessProfile, ...patch },
     };
-    storageService.setObject(STORAGE_KEYS.SETTINGS, updated);
-    return updated;
+    return storageService.setObject(DB_TABLES.SETTINGS, SETTINGS_ROW_ID, updated);
   },
 };
 
 export const backupService = {
-  exportJSON(): string {
-    const dump = storageService.exportAll(Object.values(STORAGE_KEYS));
+  async exportJSON(): Promise<string> {
+    const dump = await storageService.exportAll(Object.values(DB_TABLES));
     return JSON.stringify(dump, null, 2);
   },
 
-  downloadBackup(): void {
-    const json = this.exportJSON();
+  async downloadBackup(): Promise<void> {
+    const json = await this.exportJSON();
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -48,6 +47,6 @@ export const backupService = {
   async restoreFromFile(file: File): Promise<void> {
     const text = await file.text();
     const dump = JSON.parse(text) as Record<string, unknown>;
-    storageService.importAll(dump);
+    await storageService.importAll(dump);
   },
 };

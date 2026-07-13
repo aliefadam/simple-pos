@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import { productService } from "./productService";
 import { isSameDay, isSameMonth } from "../utils/format";
@@ -11,41 +11,41 @@ function generateCode(seq: number): string {
 }
 
 export const transactionService = {
-  getAll(): Transaction[] {
-    return storageService
-      .getAll<Transaction>(STORAGE_KEYS.TRANSACTIONS)
+  async getAll(): Promise<Transaction[]> {
+    return (await storageService
+      .getAll<Transaction>(DB_TABLES.TRANSACTIONS))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   },
 
-  getById(id: string): Transaction | undefined {
-    return storageService.getOne<Transaction>(STORAGE_KEYS.TRANSACTIONS, id);
+  async getById(id: string): Promise<Transaction | undefined> {
+    return storageService.getOne<Transaction>(DB_TABLES.TRANSACTIONS, id);
   },
 
-  getToday(): Transaction[] {
+  async getToday(): Promise<Transaction[]> {
     const now = new Date().toISOString();
-    return this.getAll().filter((t) => isSameDay(t.date, now) && t.status === "selesai");
+    return (await this.getAll()).filter((t) => isSameDay(t.date, now) && t.status === "selesai");
   },
 
-  getThisMonth(): Transaction[] {
+  async getThisMonth(): Promise<Transaction[]> {
     const now = new Date().toISOString();
-    return this.getAll().filter((t) => isSameMonth(t.date, now) && t.status === "selesai");
+    return (await this.getAll()).filter((t) => isSameMonth(t.date, now) && t.status === "selesai");
   },
 
-  getHeld(): Transaction[] {
-    return this.getAll().filter((t) => t.status === "ditahan");
+  async getHeld(): Promise<Transaction[]> {
+    return (await this.getAll()).filter((t) => t.status === "ditahan");
   },
 
-  getByCashier(cashierId: string): Transaction[] {
-    return this.getAll().filter((t) => t.cashierId === cashierId);
+  async getByCashier(cashierId: string): Promise<Transaction[]> {
+    return (await this.getAll()).filter((t) => t.cashierId === cashierId);
   },
 
-  checkout(
+  async checkout(
     items: CartItem[],
     paymentMethod: PaymentMethod,
     cashier: User,
     options?: { cashReceived?: number; extraCharge?: number; status?: TransactionStatus }
-  ): Transaction {
-    const all = storageService.getAll<Transaction>(STORAGE_KEYS.TRANSACTIONS);
+  ): Promise<Transaction> {
+    const all = await storageService.getAll<Transaction>(DB_TABLES.TRANSACTIONS);
     const subtotal = items.reduce((sum, it) => sum + it.price * it.qty, 0);
     const extraCharge = Math.max(0, options?.extraCharge ?? 0);
     const total = subtotal + extraCharge;
@@ -65,31 +65,31 @@ export const transactionService = {
       change: options?.cashReceived ? options.cashReceived - total : undefined,
       status,
     };
-    storageService.insert(STORAGE_KEYS.TRANSACTIONS, transaction);
+    await storageService.insert(DB_TABLES.TRANSACTIONS, transaction);
 
     if (status === "selesai") {
-      items.forEach((item) => {
-        const product = productService.getById(item.productId);
+      for (const item of items) {
+        const product = await productService.getById(item.productId);
         if (product?.trackStock) {
-          productService.adjustStock(item.productId, -item.qty);
+          await productService.adjustStock(item.productId, -item.qty);
         }
-      });
+      }
     }
     return transaction;
   },
 
-  resumeHeld(id: string): Transaction | undefined {
-    const tx = this.getById(id);
+  async resumeHeld(id: string): Promise<Transaction | undefined> {
+    const tx = await this.getById(id);
     if (!tx) return undefined;
-    storageService.remove<Transaction>(STORAGE_KEYS.TRANSACTIONS, id);
+    await storageService.remove(DB_TABLES.TRANSACTIONS, id);
     return tx;
   },
 
-  cancel(id: string): void {
-    storageService.update<Transaction>(STORAGE_KEYS.TRANSACTIONS, id, { status: "dibatalkan" });
+  async cancel(id: string): Promise<void> {
+    await storageService.update<Transaction>(DB_TABLES.TRANSACTIONS, id, { status: "dibatalkan" });
   },
 
-  remove(id: string): void {
-    storageService.remove<Transaction>(STORAGE_KEYS.TRANSACTIONS, id);
+  async remove(id: string): Promise<void> {
+    await storageService.remove(DB_TABLES.TRANSACTIONS, id);
   },
 };

@@ -1,23 +1,40 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { productService } from "../services/productService";
 import { transactionService } from "../services/transactionService";
 import { formatCurrency } from "../utils/format";
+import type { Product, Transaction } from "../types";
 
 export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [results, setResults] = useState<{ products: Product[]; transactions: Transaction[] }>({
+    products: [],
+    transactions: [],
+  });
   const navigate = useNavigate();
 
-  const results = useMemo(() => {
-    if (!query.trim()) return { products: [], transactions: [] };
+  useEffect(() => {
+    let active = true;
+    if (!query.trim()) {
+      setResults({ products: [], transactions: [] });
+      return;
+    }
+
     const q = query.toLowerCase();
-    const products = productService.getAll().filter((p) => p.name.toLowerCase().includes(q)).slice(0, 4);
-    const transactions = transactionService
-      .getAll()
-      .filter((t) => t.code.toLowerCase().includes(q))
-      .slice(0, 4);
-    return { products, transactions };
+    Promise.all([productService.getAll(), transactionService.getAll()]).then(
+      ([products, transactions]) => {
+        if (!active) return;
+        setResults({
+          products: products.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 4),
+          transactions: transactions.filter((t) => t.code.toLowerCase().includes(q)).slice(0, 4),
+        });
+      },
+    );
+
+    return () => {
+      active = false;
+    };
   }, [query]);
 
   const hasResults = results.products.length > 0 || results.transactions.length > 0;

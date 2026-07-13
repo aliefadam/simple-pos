@@ -43,17 +43,32 @@ export default function Pengeluaran() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [totalThisMonth, setTotalThisMonth] = useState(0);
+  const [totalToday, setTotalToday] = useState(0);
 
-  function load() {
-    setExpenses(expenseService.getAll());
+  async function load() {
+    const [allExpenses, monthExpenses, todayExpenses] = await Promise.all([
+      expenseService.getAll(),
+      expenseService.getThisMonth(),
+      expenseService.getToday(),
+    ]);
+    setExpenses(allExpenses);
+    setTotalThisMonth(monthExpenses.reduce((s, e) => s + e.amount, 0));
+    setTotalToday(todayExpenses.reduce((s, e) => s + e.amount, 0));
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      load();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await load();
+      if (active) setLoading(false);
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   const filtered = useMemo(
@@ -68,8 +83,6 @@ export default function Pengeluaran() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalThisMonth = expenseService.getThisMonth().reduce((s, e) => s + e.amount, 0);
-  const totalToday = expenseService.getToday().reduce((s, e) => s + e.amount, 0);
   const availableCategories = useMemo(
     () =>
       isOwner
@@ -83,6 +96,7 @@ export default function Pengeluaran() {
   function openCreate() {
     setEditing(null);
     setForm({ ...emptyForm, category: availableCategories[0] ?? EXPENSE_CATEGORIES[0] });
+    setReceiptFile(null);
     setModalOpen(true);
   }
 
@@ -100,10 +114,12 @@ export default function Pengeluaran() {
       receiptImage: exp.receiptImage ?? "",
       receiptImageName: exp.receiptImageName ?? "",
     });
+    setReceiptFile(null);
     setModalOpen(true);
   }
 
   function handleReceiptChange(file: File | null) {
+    setReceiptFile(file);
     if (!file) {
       setForm((f) => ({ ...f, receiptImage: "", receiptImageName: "" }));
       return;
@@ -119,7 +135,7 @@ export default function Pengeluaran() {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.amount || !form.note.trim()) {
       showToast("error", "Lengkapi data pengeluaran");
       return;
@@ -132,28 +148,31 @@ export default function Pengeluaran() {
       showToast("warning", "Kategori dibatasi", "Karyawan tidak dapat memilih kategori ini");
       return;
     }
+    const uploadedReceipt = receiptFile
+      ? await expenseService.uploadReceipt(receiptFile)
+      : { receiptImage: form.receiptImage, receiptImageName: form.receiptImageName };
     const payload = {
       date: new Date(form.date).toISOString(),
       category: form.category,
       amount: Number(form.amount),
       note: form.note,
       createdBy: user?.name ?? "Owner",
-      receiptImage: form.receiptImage,
-      receiptImageName: form.receiptImageName,
+      receiptImage: uploadedReceipt.receiptImage,
+      receiptImageName: uploadedReceipt.receiptImageName,
     };
     if (editing) {
       if (!isOwner) {
         showToast("warning", "Akses dibatasi", "Hanya owner yang dapat mengedit pengeluaran");
         return;
       }
-      expenseService.update(editing.id, payload);
+      await expenseService.update(editing.id, payload);
       showToast("success", "Pengeluaran diperbarui");
     } else {
-      expenseService.create(payload);
+      await expenseService.create(payload);
       showToast("success", "Pengeluaran ditambahkan");
     }
     setModalOpen(false);
-    load();
+    await load();
   }
 
   async function handleDelete(exp: Expense) {
@@ -163,8 +182,8 @@ export default function Pengeluaran() {
     }
     const ok = await confirm({ title: "Hapus data pengeluaran ini?", danger: true, confirmLabel: "Ya, Hapus" });
     if (!ok) return;
-    expenseService.remove(exp.id);
-    load();
+    await expenseService.remove(exp.id);
+    await load();
     showToast("success", "Pengeluaran dihapus");
   }
 

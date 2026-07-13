@@ -14,7 +14,16 @@ import { Badge } from "../components/ui/Badge";
 import { Skeleton } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ProductAvatar } from "../components/ProductAvatar";
-import { reportService, type DashboardStats, type DailyPoint, type TopProduct } from "../services/reportService";
+import {
+  reportService,
+  type DashboardStats,
+  type DailyPoint,
+  type TopProduct,
+} from "../services/reportService";
+import {
+  databaseStatusService,
+  type DatabaseStatus,
+} from "../services/databaseStatusService";
 import { productService } from "../services/productService";
 import { transactionService } from "../services/transactionService";
 import { formatCurrency, formatNumber, timeAgo } from "../utils/format";
@@ -22,11 +31,41 @@ import { useAuth } from "../context/AuthContext";
 import type { Product, Transaction } from "../types";
 
 const statConfig = [
-  { key: "omsetHariIni", label: "Omset Hari Ini", icon: "fi fi-rr-money-bill-wave", tone: "indigo", format: "currency" },
-  { key: "jumlahTransaksiHariIni", label: "Jumlah Transaksi", icon: "fi fi-rr-receipt", tone: "blue", format: "number" },
-  { key: "produkTerjualHariIni", label: "Produk Terjual", icon: "fi fi-rr-shopping-bag", tone: "green", format: "number" },
-  { key: "produkHampirHabis", label: "Produk Hampir Habis", icon: "fi fi-rr-triangle-warning", tone: "amber", format: "number" },
-  { key: "pengeluaranHariIni", label: "Pengeluaran Hari Ini", icon: "fi fi-rr-wallet", tone: "red", format: "currency" },
+  {
+    key: "omsetHariIni",
+    label: "Omset Hari Ini",
+    icon: "fi fi-rr-money-bill-wave",
+    tone: "indigo",
+    format: "currency",
+  },
+  {
+    key: "jumlahTransaksiHariIni",
+    label: "Jumlah Transaksi",
+    icon: "fi fi-rr-receipt",
+    tone: "blue",
+    format: "number",
+  },
+  {
+    key: "produkTerjualHariIni",
+    label: "Produk Terjual",
+    icon: "fi fi-rr-shopping-bag",
+    tone: "green",
+    format: "number",
+  },
+  {
+    key: "produkHampirHabis",
+    label: "Produk Hampir Habis",
+    icon: "fi fi-rr-triangle-warning",
+    tone: "amber",
+    format: "number",
+  },
+  {
+    key: "pengeluaranHariIni",
+    label: "Pengeluaran Hari Ini",
+    icon: "fi fi-rr-wallet",
+    tone: "red",
+    format: "currency",
+  },
 ] as const;
 
 const TONE_CLASSES: Record<string, string> = {
@@ -45,21 +84,49 @@ export default function Dashboard() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [lowStock, setLowStock] = useState<Product[]>([]);
   const [recent, setRecent] = useState<Transaction[]>([]);
+  const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(
+    null,
+  );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setStats(reportService.getDashboardStats());
-      setWeekly(reportService.getWeeklySales());
-      setTopProducts(reportService.getTopProducts(undefined, 5));
-      setLowStock([...productService.getLowStock(), ...productService.getOutOfStock()].slice(0, 5));
-      setRecent(
+    let active = true;
+
+    const timer = setTimeout(async () => {
+      const [
+        dashboardStats,
+        weeklySales,
+        top,
+        low,
+        out,
+        recentActivity,
+        dbStatus,
+      ] = await Promise.all([
+        reportService.getDashboardStats(),
+        reportService.getWeeklySales(),
+        reportService.getTopProducts(undefined, 5),
+        productService.getLowStock(),
+        productService.getOutOfStock(),
         isOwner
           ? reportService.getRecentActivity(6)
-          : transactionService.getByCashier(user?.id ?? "").slice(0, 6)
-      );
+          : transactionService.getByCashier(user?.id ?? ""),
+        isOwner ? databaseStatusService.check() : Promise.resolve(null),
+      ]);
+
+      if (!active) return;
+
+      setStats(dashboardStats);
+      setWeekly(weeklySales);
+      setTopProducts(top);
+      setLowStock([...low, ...out].slice(0, 5));
+      setRecent(recentActivity.slice(0, 6));
+      setDatabaseStatus(dbStatus);
       setLoading(false);
     }, 400);
-    return () => clearTimeout(timer);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [isOwner, user?.id]);
 
   return (
@@ -67,7 +134,7 @@ export default function Dashboard() {
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Halo, {user?.name?.split(" ")[0]} 👋
+            Halo, {user?.name?.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Berikut ringkasan performa usaha Anda hari ini.
@@ -92,26 +159,61 @@ export default function Dashboard() {
               </Card>
             ))
           : statConfig.map((s, idx) => {
-                const value = stats?.[s.key as keyof DashboardStats] ?? 0;
-                return (
-                  <Card key={s.key} className="slide-up p-5 transition-transform duration-200 hover:-translate-y-0.5" style={{ animationDelay: `${idx * 60}ms` }}>
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${TONE_CLASSES[s.tone]}`}>
-                      <i className={`${s.icon} text-base`} />
-                    </div>
-                    <p className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
-                      {s.format === "currency" ? formatCurrency(value) : formatNumber(value)}
-                    </p>
-                    <p className="mt-1 text-xs font-medium text-slate-400">{s.label}</p>
-                  </Card>
-                );
-              })}
+              const value = stats?.[s.key as keyof DashboardStats] ?? 0;
+              return (
+                <Card
+                  key={s.key}
+                  className="slide-up p-5 transition-transform duration-200 hover:-translate-y-0.5"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                >
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${TONE_CLASSES[s.tone]}`}
+                  >
+                    <i className={`${s.icon} text-base`} />
+                  </div>
+                  <p className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">
+                    {s.format === "currency"
+                      ? formatCurrency(value)
+                      : formatNumber(value)}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-slate-400">
+                    {s.label}
+                  </p>
+                </Card>
+              );
+            })}
       </div>
+
+      {isOwner && databaseStatus && (
+        <Card className="slide-up p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Status Database
+              </p>
+              <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+                {databaseStatus.connected
+                  ? "Supabase Connected"
+                  : "Supabase Not Connected"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {databaseStatus.message}
+              </p>
+            </div>
+            <Badge tone={databaseStatus.connected ? "green" : "red"}>
+              {databaseStatus.connected ? "Connected" : "Disconnected"}
+            </Badge>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="slide-up xl:col-span-2">
           <CardHeader>
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Grafik Penjualan Mingguan</h3>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+                Grafik Penjualan Mingguan
+              </h3>
               <p className="text-xs text-slate-400">Omset 7 hari terakhir</p>
             </div>
             <Badge tone="green">
@@ -123,26 +225,51 @@ export default function Dashboard() {
               <Skeleton className="h-64 w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={weekly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart
+                  data={weekly}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="colorOmset" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#6366f1" stopOpacity={0.35} />
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#e2e8f0"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 12, fill: "#94a3b8" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <YAxis
                     tick={{ fontSize: 11, fill: "#94a3b8" }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
-                    formatter={(value) => [formatCurrency(Number(value)), "Omset"]}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 12,
+                    }}
+                    formatter={(value) => [
+                      formatCurrency(Number(value)),
+                      "Omset",
+                    ]}
                   />
-                  <Area type="monotone" dataKey="omset" stroke="#6366f1" strokeWidth={2.5} fill="url(#colorOmset)" />
+                  <Area
+                    type="monotone"
+                    dataKey="omset"
+                    stroke="#6366f1"
+                    strokeWidth={2.5}
+                    fill="url(#colorOmset)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -151,29 +278,39 @@ export default function Dashboard() {
 
         <Card className="slide-up">
           <CardHeader>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Produk Terlaris</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+              Produk Terlaris
+            </h3>
           </CardHeader>
           <CardBody className="space-y-3">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))
             ) : topProducts.length === 0 ? (
               <EmptyState icon="fi fi-rr-chart-pie" title="Belum ada penjualan" />
             ) : (
-              topProducts.map((p, idx) => (
-                <div key={p.productId} className="flex items-center gap-3">
+              topProducts.map((product, idx) => (
+                <div key={product.productId} className="flex items-center gap-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                     {idx + 1}
                   </span>
                   <ProductAvatar
-                    name={p.name}
+                    name={product.name}
                     className="h-10 w-10 shrink-0 rounded-lg"
                     textClassName="text-xs"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</p>
-                    <p className="text-xs text-slate-400">{p.qty} terjual</p>
+                    <p className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {product.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {product.qty} terjual
+                    </p>
                   </div>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">{formatCurrency(p.total)}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">
+                    {formatCurrency(product.total)}
+                  </p>
                 </div>
               ))
             )}
@@ -184,28 +321,47 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="slide-up xl:col-span-2">
           <CardHeader>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Aktivitas Terbaru</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+              Aktivitas Terbaru
+            </h3>
           </CardHeader>
           <CardBody className="space-y-1">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))
             ) : recent.length === 0 ? (
               <EmptyState icon="fi fi-rr-time-past" title="Belum ada aktivitas" />
             ) : (
               recent.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-0 dark:border-slate-800/60">
+                <div
+                  key={tx.id}
+                  className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-0 dark:border-slate-800/60"
+                >
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
                     <i className="fi fi-rr-receipt text-sm" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      {tx.code} · {tx.cashierName}
+                      {tx.code} - {tx.cashierName}
                     </p>
-                    <p className="text-xs text-slate-400">{timeAgo(tx.date)} · {tx.items.length} item</p>
+                    <p className="text-xs text-slate-400">
+                      {timeAgo(tx.date)} - {tx.items.length} item
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(tx.total)}</p>
-                    <Badge tone={tx.status === "selesai" ? "green" : tx.status === "ditahan" ? "amber" : "red"}>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      {formatCurrency(tx.total)}
+                    </p>
+                    <Badge
+                      tone={
+                        tx.status === "selesai"
+                          ? "green"
+                          : tx.status === "ditahan"
+                            ? "amber"
+                            : "red"
+                      }
+                    >
                       {tx.status}
                     </Badge>
                   </div>
@@ -217,25 +373,36 @@ export default function Dashboard() {
 
         <Card className="slide-up">
           <CardHeader>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Stok Perlu Perhatian</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+              Stok Perlu Perhatian
+            </h3>
           </CardHeader>
           <CardBody className="space-y-3">
             {loading ? (
-              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+              Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))
             ) : lowStock.length === 0 ? (
               <EmptyState icon="fi fi-rr-box-check" title="Semua stok aman" />
             ) : (
-              lowStock.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2">
+              lowStock.map((product) => (
+                <div
+                  key={product.id}
+                  className="flex items-center justify-between gap-2"
+                >
                   <div className="flex items-center gap-2.5">
                     <ProductAvatar
-                      name={p.name}
+                      name={product.name}
                       className="h-9 w-9 rounded-lg"
                       textClassName="text-[11px]"
                     />
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {product.name}
+                    </p>
                   </div>
-                  <Badge tone={p.stock === 0 ? "red" : "amber"}>{p.stock === 0 ? "Habis" : `${p.stock} pcs`}</Badge>
+                  <Badge tone={product.stock === 0 ? "red" : "amber"}>
+                    {product.stock === 0 ? "Habis" : `${product.stock} pcs`}
+                  </Badge>
                 </div>
               ))
             )}

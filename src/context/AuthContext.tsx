@@ -5,10 +5,10 @@ import type { User } from "../types";
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (username: string, password: string, rememberMe: boolean) => User;
+  login: (username: string, password: string, rememberMe: boolean) => Promise<User>;
   logout: () => void;
   isOwner: boolean;
-  refreshUser: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -18,12 +18,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setUser(authService.getCurrentUser());
-    setIsLoading(false);
+    let active = true;
+    authService
+      .getCurrentUser()
+      .then((currentUser) => {
+        if (active) setUser(currentUser);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  function login(username: string, password: string, rememberMe: boolean) {
-    const loggedUser = authService.login(username, password, rememberMe);
+  async function login(username: string, password: string, rememberMe: boolean) {
+    const loggedUser = await authService.login(username, password, rememberMe);
     setUser(loggedUser);
     return loggedUser;
   }
@@ -33,8 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  function refreshUser() {
-    setUser(authService.getCurrentUser());
+  async function refreshUser() {
+    setUser(await authService.getCurrentUser());
   }
 
   return (

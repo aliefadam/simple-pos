@@ -1,36 +1,58 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES, SUPABASE_BUCKETS } from "../constants";
 import { storageService } from "./storageService";
 import { isSameDay, isSameMonth } from "../utils/format";
 import type { Expense } from "../types";
+import { requireSupabase } from "../lib/supabase";
 
 export const expenseService = {
-  getAll(): Expense[] {
-    return storageService
-      .getAll<Expense>(STORAGE_KEYS.EXPENSES)
+  async getAll(): Promise<Expense[]> {
+    return (await storageService
+      .getAll<Expense>(DB_TABLES.EXPENSES))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   },
 
-  getToday(): Expense[] {
+  async getToday(): Promise<Expense[]> {
     const now = new Date().toISOString();
-    return this.getAll().filter((e) => isSameDay(e.date, now));
+    return (await this.getAll()).filter((e) => isSameDay(e.date, now));
   },
 
-  getThisMonth(): Expense[] {
+  async getThisMonth(): Promise<Expense[]> {
     const now = new Date().toISOString();
-    return this.getAll().filter((e) => isSameMonth(e.date, now));
+    return (await this.getAll()).filter((e) => isSameMonth(e.date, now));
   },
 
-  create(data: Omit<Expense, "id">): Expense {
+  async create(data: Omit<Expense, "id">): Promise<Expense> {
     const expense: Expense = { ...data, id: uuid() };
-    return storageService.insert(STORAGE_KEYS.EXPENSES, expense);
+    return storageService.insert(DB_TABLES.EXPENSES, expense);
   },
 
-  update(id: string, patch: Partial<Expense>): Expense | undefined {
-    return storageService.update<Expense>(STORAGE_KEYS.EXPENSES, id, patch);
+  async update(id: string, patch: Partial<Expense>): Promise<Expense | undefined> {
+    return storageService.update<Expense>(DB_TABLES.EXPENSES, id, patch);
   },
 
-  remove(id: string): void {
-    storageService.remove<Expense>(STORAGE_KEYS.EXPENSES, id);
+  async remove(id: string): Promise<void> {
+    await storageService.remove(DB_TABLES.EXPENSES, id);
+  },
+
+  async uploadReceipt(file: File): Promise<{ receiptImage: string; receiptImageName: string }> {
+    const client = requireSupabase();
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `expenses/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error } = await client.storage
+      .from(import.meta.env.VITE_SUPABASE_STORAGE_BUCKET_EXPENSE_RECEIPTS || SUPABASE_BUCKETS.EXPENSE_RECEIPTS)
+      .upload(path, file, {
+        cacheControl: "3600",
+        contentType: file.type,
+        upsert: true,
+      });
+    if (error) throw new Error(error.message);
+    const { data } = client.storage
+      .from(import.meta.env.VITE_SUPABASE_STORAGE_BUCKET_EXPENSE_RECEIPTS || SUPABASE_BUCKETS.EXPENSE_RECEIPTS)
+      .getPublicUrl(path);
+    return {
+      receiptImage: data.publicUrl,
+      receiptImageName: file.name,
+    };
   },
 };

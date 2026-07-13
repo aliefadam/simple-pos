@@ -1,28 +1,28 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import { productService } from "./productService";
 import type { StockMovement, StockMovementType, User } from "../types";
 
 export const stockService = {
-  getAll(): StockMovement[] {
-    return storageService
-      .getAll<StockMovement>(STORAGE_KEYS.STOCK_MOVEMENTS)
+  async getAll(): Promise<StockMovement[]> {
+    return (await storageService
+      .getAll<StockMovement>(DB_TABLES.STOCK_MOVEMENTS))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   },
 
-  getByProduct(productId: string): StockMovement[] {
-    return this.getAll().filter((m) => m.productId === productId);
+  async getByProduct(productId: string): Promise<StockMovement[]> {
+    return (await this.getAll()).filter((m) => m.productId === productId);
   },
 
-  record(
+  async record(
     productId: string,
     type: StockMovementType,
     qty: number,
     reason: string,
     user: User
-  ): StockMovement {
-    const product = productService.getById(productId);
+  ): Promise<StockMovement> {
+    const product = await productService.getById(productId);
     if (product && !product.trackStock) {
       throw new Error("Produk ini tidak menggunakan stok");
     }
@@ -37,16 +37,16 @@ export const stockService = {
       userId: user.id,
       userName: user.name,
     };
-    storageService.insert(STORAGE_KEYS.STOCK_MOVEMENTS, movement);
-    productService.adjustStock(productId, qty);
+    await storageService.insert(DB_TABLES.STOCK_MOVEMENTS, movement);
+    await productService.adjustStock(productId, qty);
     return movement;
   },
 
-  stockIn(productId: string, qty: number, reason: string, user: User): StockMovement {
+  async stockIn(productId: string, qty: number, reason: string, user: User): Promise<StockMovement> {
     return this.record(productId, "masuk", Math.abs(qty), reason || "Stok masuk", user);
   },
 
-  adjust(productId: string, qty: number, reason: string, user: User): StockMovement {
+  async adjust(productId: string, qty: number, reason: string, user: User): Promise<StockMovement> {
     return this.record(productId, "penyesuaian", qty, reason, user);
   },
 };

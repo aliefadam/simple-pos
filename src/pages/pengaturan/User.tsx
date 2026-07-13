@@ -26,16 +26,21 @@ export default function UserManagement() {
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  function load() {
-    setUsers(userService.getAll());
+  async function load() {
+    setUsers(await userService.getAll());
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      load();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await load();
+      if (active) setLoading(false);
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   function openCreate() {
@@ -50,20 +55,20 @@ export default function UserManagement() {
     setModalOpen(true);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.name.trim() || !form.username.trim() || !form.password.trim()) {
       showToast("error", "Lengkapi data user");
       return;
     }
     if (editing) {
-      userService.update(editing.id, form);
+      await userService.update(editing.id, form);
       showToast("success", "User diperbarui");
     } else {
-      userService.create(form);
+      await userService.create(form);
       showToast("success", "User ditambahkan");
     }
     setModalOpen(false);
-    load();
+    await load();
   }
 
   async function handleDelete(u: User) {
@@ -73,8 +78,8 @@ export default function UserManagement() {
     }
     const ok = await confirm({ title: `Hapus user "${u.name}"?`, danger: true, confirmLabel: "Ya, Hapus" });
     if (!ok) return;
-    userService.remove(u.id);
-    load();
+    await userService.remove(u.id);
+    await load();
     showToast("success", "User dihapus");
   }
 

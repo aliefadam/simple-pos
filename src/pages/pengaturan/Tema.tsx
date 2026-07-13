@@ -23,13 +23,13 @@ export default function Tema() {
       confirmLabel: "Ya, Reset",
     });
     if (!ok) return;
-    resetDummyData();
+    await resetDummyData();
     showToast("success", "Data demo berhasil direset");
     setTimeout(() => window.location.reload(), 800);
   }
 
-  function handleBackup() {
-    backupService.downloadBackup();
+  async function handleBackup() {
+    await backupService.downloadBackup();
     showToast("success", "Backup berhasil diunduh");
   }
 

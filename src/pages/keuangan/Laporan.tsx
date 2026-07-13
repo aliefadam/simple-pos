@@ -21,12 +21,20 @@ export default function Laporan() {
   const [todayStats, setTodayStats] = useState({ omset: 0, transaksi: 0, produkTerjual: 0 });
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setMonthly(reportService.getMonthlySales());
-      setTopProducts(reportService.getTopProducts(undefined, 6));
-      setLeastSold(reportService.getLeastSoldProducts(6));
-      setProfit(reportService.getProfitSimple());
-      const todayTx = transactionService.getToday();
+    let active = true;
+    const t = setTimeout(async () => {
+      const [monthlySales, top, least, profitSummary, todayTx] = await Promise.all([
+        reportService.getMonthlySales(),
+        reportService.getTopProducts(undefined, 6),
+        reportService.getLeastSoldProducts(6),
+        reportService.getProfitSimple(),
+        transactionService.getToday(),
+      ]);
+      if (!active) return;
+      setMonthly(monthlySales);
+      setTopProducts(top);
+      setLeastSold(least);
+      setProfit(profitSummary);
       setTodayStats({
         omset: todayTx.reduce((s, t) => s + t.total, 0),
         transaksi: todayTx.length,
@@ -34,7 +42,10 @@ export default function Laporan() {
       });
       setLoading(false);
     }, 400);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   function exportExcel() {

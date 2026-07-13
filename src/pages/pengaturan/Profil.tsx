@@ -11,12 +11,17 @@ export default function Profil() {
   const [form, setForm] = useState({ name: "", address: "", phone: "", footerNote: "" });
 
   useEffect(() => {
-    const profile = settingsService.get().businessProfile;
-    setForm(profile);
+    let active = true;
+    settingsService.get().then((settings) => {
+      if (active) setForm(settings.businessProfile);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  function handleSave() {
-    settingsService.update(form);
+  async function handleSave() {
+    await settingsService.update(form);
     showToast("success", "Profil usaha disimpan");
   }
 

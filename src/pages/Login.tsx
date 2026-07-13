@@ -23,19 +23,21 @@ export default function Login() {
     setError("");
     setLoading(true);
     setTimeout(() => {
-      try {
-        const user = login(username, password, remember);
-        showToast(
-          "success",
-          `Selamat datang, ${user.name}`,
-          "Anda berhasil masuk ke Kasirku POS",
-        );
-        navigate("/");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan");
-      } finally {
-        setLoading(false);
-      }
+      login(username, password, remember)
+        .then((user) => {
+          showToast(
+            "success",
+            `Selamat datang, ${user.name}`,
+            "Anda berhasil masuk ke Kasirku POS",
+          );
+          navigate("/");
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }, 500);
   }
 

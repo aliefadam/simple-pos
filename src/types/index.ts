@@ -1,6 +1,4 @@
 // Domain types shared across the app.
-// Designed so the shape matches what a future REST/GraphQL API would return,
-// making it easy to swap the localStorage services for real API calls later.
 
 export type Role = "owner" | "karyawan";
 

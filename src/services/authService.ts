@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES, SESSION_STORAGE_KEY } from "../constants";
 import { storageService } from "./storageService";
 import type { Session, User } from "../types";
 
@@ -7,8 +7,8 @@ function getLegacyUsername(user: User & { email?: string }): string {
 }
 
 export const authService = {
-  login(username: string, password: string, rememberMe: boolean): User {
-    const users = storageService.getAll<(User & { email?: string })>(STORAGE_KEYS.USERS);
+  async login(username: string, password: string, rememberMe: boolean): Promise<User> {
+    const users = await storageService.getAll<(User & { email?: string })>(DB_TABLES.USERS);
     const user = users.find(
       (u) => getLegacyUsername(u).toLowerCase() === username.trim().toLowerCase() && u.password === password
     );
@@ -19,22 +19,28 @@ export const authService = {
       throw new Error("Akun ini sudah dinonaktifkan");
     }
     const session: Session = { userId: user.id, rememberMe, loginAt: new Date().toISOString() };
-    storageService.setObject(STORAGE_KEYS.SESSION, session);
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     return user;
   },
 
   logout(): void {
-    storageService.clearKey(STORAGE_KEYS.SESSION);
+    sessionStorage.removeItem(SESSION_STORAGE_KEY);
   },
 
   getSession(): Session | null {
-    return storageService.getObject<Session | null>(STORAGE_KEYS.SESSION, null);
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as Session;
+    } catch {
+      return null;
+    }
   },
 
-  getCurrentUser(): User | null {
+  async getCurrentUser(): Promise<User | null> {
     const session = this.getSession();
     if (!session) return null;
-    const user = storageService.getOne<User & { email?: string }>(STORAGE_KEYS.USERS, session.userId);
+    const user = await storageService.getOne<User & { email?: string }>(DB_TABLES.USERS, session.userId);
     if (!user) return null;
     return { ...user, username: getLegacyUsername(user) };
   },

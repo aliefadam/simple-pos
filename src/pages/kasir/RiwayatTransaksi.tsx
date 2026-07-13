@@ -32,18 +32,22 @@ export default function RiwayatTransaksi() {
   const [detail, setDetail] = useState<Transaction | null>(null);
   const [receipt, setReceipt] = useState<Transaction | null>(null);
 
-  function loadData() {
-    const all = isOwner ? transactionService.getAll() : transactionService.getByCashier(user?.id ?? "");
+  async function loadData() {
+    const all = isOwner ? await transactionService.getAll() : await transactionService.getByCashier(user?.id ?? "");
     setTransactions(all);
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      loadData();
-      setLoading(false);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await loadData();
+      if (active) setLoading(false);
     }, 350);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -68,8 +72,8 @@ export default function RiwayatTransaksi() {
       confirmLabel: "Ya, Batalkan",
     });
     if (!ok) return;
-    transactionService.cancel(tx.id);
-    loadData();
+    await transactionService.cancel(tx.id);
+    await loadData();
     showToast("success", "Transaksi dibatalkan");
   }
 

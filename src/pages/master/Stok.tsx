@@ -26,17 +26,26 @@ export default function Stok() {
   const [modalType, setModalType] = useState<"masuk" | "penyesuaian" | null>(null);
   const [form, setForm] = useState({ productId: "", qty: "", reason: "" });
 
-  function load() {
-    setProducts(productService.getActive());
-    setMovements(stockService.getAll());
+  async function load() {
+    const [activeProducts, allMovements] = await Promise.all([
+      productService.getActive(),
+      stockService.getAll(),
+    ]);
+    setProducts(activeProducts);
+    setMovements(allMovements);
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      load();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await load();
+      if (active) setLoading(false);
     }, 350);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   function openModal(type: "masuk" | "penyesuaian") {
@@ -45,7 +54,7 @@ export default function Stok() {
     setModalType(type);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!user || !form.productId || !form.qty) {
       showToast("error", "Lengkapi data terlebih dahulu");
       return;
@@ -53,10 +62,10 @@ export default function Stok() {
     const qty = Number(form.qty);
     try {
       if (modalType === "masuk") {
-        stockService.stockIn(form.productId, qty, form.reason || "Stok masuk", user);
+        await stockService.stockIn(form.productId, qty, form.reason || "Stok masuk", user);
         showToast("success", "Stok masuk dicatat");
       } else if (modalType === "penyesuaian") {
-        stockService.adjust(form.productId, -Math.abs(qty), form.reason, user);
+        await stockService.adjust(form.productId, -Math.abs(qty), form.reason, user);
         showToast("success", "Penyesuaian stok dicatat");
       }
     } catch (error) {
@@ -64,7 +73,7 @@ export default function Stok() {
       return;
     }
     setModalType(null);
-    load();
+    await load();
   }
 
   function productName(id: string) {

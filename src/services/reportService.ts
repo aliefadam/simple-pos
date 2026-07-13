@@ -28,15 +28,15 @@ export interface TopProduct {
 }
 
 export const reportService = {
-  getDashboardStats(): DashboardStats {
-    const todayTx = transactionService.getToday();
+  async getDashboardStats(): Promise<DashboardStats> {
+    const todayTx = await transactionService.getToday();
     const omsetHariIni = todayTx.reduce((s, t) => s + t.total, 0);
     const produkTerjualHariIni = todayTx.reduce(
       (s, t) => s + t.items.reduce((si, it) => si + it.qty, 0),
       0
     );
-    const produkHampirHabis = productService.getLowStock().length + productService.getOutOfStock().length;
-    const pengeluaranHariIni = expenseService.getToday().reduce((s, e) => s + e.amount, 0);
+    const produkHampirHabis = (await productService.getLowStock()).length + (await productService.getOutOfStock()).length;
+    const pengeluaranHariIni = (await expenseService.getToday()).reduce((s, e) => s + e.amount, 0);
     return {
       omsetHariIni,
       jumlahTransaksiHariIni: todayTx.length,
@@ -46,8 +46,8 @@ export const reportService = {
     };
   },
 
-  getWeeklySales(): DailyPoint[] {
-    const all = transactionService.getAll().filter((t) => t.status === "selesai");
+  async getWeeklySales(): Promise<DailyPoint[]> {
+    const all = (await transactionService.getAll()).filter((t) => t.status === "selesai");
     const points: DailyPoint[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -64,8 +64,8 @@ export const reportService = {
     return points;
   },
 
-  getMonthlySales(monthsBack = 6): { label: string; omset: number }[] {
-    const all = transactionService.getAll().filter((t) => t.status === "selesai");
+  async getMonthlySales(monthsBack = 6): Promise<{ label: string; omset: number }[]> {
+    const all = (await transactionService.getAll()).filter((t) => t.status === "selesai");
     const points: { label: string; omset: number }[] = [];
     for (let i = monthsBack - 1; i >= 0; i--) {
       const d = new Date();
@@ -82,8 +82,8 @@ export const reportService = {
     return points;
   },
 
-  getTopProducts(transactions?: Transaction[], limit = 5): TopProduct[] {
-    const source = transactions ?? transactionService.getAll().filter((t) => t.status === "selesai");
+  async getTopProducts(transactions?: Transaction[], limit = 5): Promise<TopProduct[]> {
+    const source = transactions ?? (await transactionService.getAll()).filter((t) => t.status === "selesai");
     const map = new Map<string, TopProduct>();
     source.forEach((t) => {
       t.items.forEach((item) => {
@@ -107,9 +107,9 @@ export const reportService = {
       .slice(0, limit);
   },
 
-  getLeastSoldProducts(limit = 5): TopProduct[] {
-    const all = this.getTopProducts(undefined, 999);
-    const products = productService.getActive();
+  async getLeastSoldProducts(limit = 5): Promise<TopProduct[]> {
+    const all = await this.getTopProducts(undefined, 999);
+    const products = await productService.getActive();
     const sold = new Set(all.map((p) => p.productId));
     const unsold: TopProduct[] = products
       .filter((p) => !sold.has(p.id))
@@ -117,14 +117,14 @@ export const reportService = {
     return [...unsold, ...all.slice().reverse()].slice(0, limit);
   },
 
-  getProfitSimple(): { pendapatan: number; pengeluaran: number; laba: number } {
-    const pendapatan = transactionService.getThisMonth().reduce((s, t) => s + t.total, 0);
-    const pengeluaran = expenseService.getThisMonth().reduce((s, e) => s + e.amount, 0);
+  async getProfitSimple(): Promise<{ pendapatan: number; pengeluaran: number; laba: number }> {
+    const pendapatan = (await transactionService.getThisMonth()).reduce((s, t) => s + t.total, 0);
+    const pengeluaran = (await expenseService.getThisMonth()).reduce((s, e) => s + e.amount, 0);
     return { pendapatan, pengeluaran, laba: pendapatan - pengeluaran };
   },
 
-  getRecentActivity(limit = 8) {
-    const transactions = transactionService.getAll().slice(0, limit);
+  async getRecentActivity(limit = 8) {
+    const transactions = (await transactionService.getAll()).slice(0, limit);
     return transactions;
   },
 };

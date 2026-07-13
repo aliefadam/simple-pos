@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import type { User } from "../types";
 
@@ -11,29 +11,29 @@ function normalizeUser(user: User & { email?: string }): User {
 }
 
 export const userService = {
-  getAll(): User[] {
-    return storageService
-      .getAll<User & { email?: string }>(STORAGE_KEYS.USERS)
+  async getAll(): Promise<User[]> {
+    return (await storageService
+      .getAll<User & { email?: string }>(DB_TABLES.USERS))
       .map(normalizeUser)
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  getById(id: string): User | undefined {
-    const user = storageService.getOne<User & { email?: string }>(STORAGE_KEYS.USERS, id);
+  async getById(id: string): Promise<User | undefined> {
+    const user = await storageService.getOne<User & { email?: string }>(DB_TABLES.USERS, id);
     return user ? normalizeUser(user) : undefined;
   },
 
-  create(data: Omit<User, "id" | "createdAt">): User {
+  async create(data: Omit<User, "id" | "createdAt">): Promise<User> {
     const user: User = { ...data, username: data.username.trim(), id: uuid(), createdAt: new Date().toISOString() };
-    return storageService.insert(STORAGE_KEYS.USERS, user);
+    return storageService.insert(DB_TABLES.USERS, user);
   },
 
-  update(id: string, patch: Partial<User>): User | undefined {
+  async update(id: string, patch: Partial<User>): Promise<User | undefined> {
     const nextPatch = patch.username ? { ...patch, username: patch.username.trim() } : patch;
-    return storageService.update<User>(STORAGE_KEYS.USERS, id, nextPatch);
+    return storageService.update<User>(DB_TABLES.USERS, id, nextPatch);
   },
 
-  remove(id: string): void {
-    storageService.remove<User>(STORAGE_KEYS.USERS, id);
+  async remove(id: string): Promise<void> {
+    await storageService.remove(DB_TABLES.USERS, id);
   },
 };

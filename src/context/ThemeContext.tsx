@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { STORAGE_KEYS } from "../constants";
 
 type Theme = "light" | "dark";
 
@@ -12,8 +11,6 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getInitialTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEYS.THEME) as Theme | null;
-  if (stored === "light" || stored === "dark") return stored;
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -27,7 +24,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
   function setTheme(next: Theme) {

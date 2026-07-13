@@ -1,14 +1,17 @@
-export const STORAGE_KEYS = {
-  USERS: "pos_users",
-  CATEGORIES: "pos_categories",
-  PRODUCTS: "pos_products",
-  TRANSACTIONS: "pos_transactions",
-  STOCK_MOVEMENTS: "pos_stock_movements",
-  EXPENSES: "pos_expenses",
-  SETTINGS: "pos_settings",
-  SESSION: "pos_session",
-  THEME: "pos_theme",
-  SEEDED: "pos_seeded_v1",
+export const DB_TABLES = {
+  USERS: "users",
+  CATEGORIES: "categories",
+  PRODUCTS: "products",
+  TRANSACTIONS: "transactions",
+  STOCK_MOVEMENTS: "stock_movements",
+  EXPENSES: "expenses",
+  SETTINGS: "app_settings",
+} as const;
+
+export const SETTINGS_ROW_ID = "default";
+export const SESSION_STORAGE_KEY = "pos_session";
+export const SUPABASE_BUCKETS = {
+  EXPENSE_RECEIPTS: "expense-receipts",
 } as const;
 
 export const EXPENSE_CATEGORIES = [

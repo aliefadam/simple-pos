@@ -4,10 +4,14 @@ import "./index.css";
 import App from "./App";
 import { seedDatabaseIfNeeded } from "./dummy-data/seed";
 
-seedDatabaseIfNeeded();
+async function bootstrap() {
+  await seedDatabaseIfNeeded();
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+}
+
+bootstrap();

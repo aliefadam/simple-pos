@@ -35,20 +35,32 @@ export default function TransaksiBaru() {
   const [heldOpen, setHeldOpen] = useState(false);
   const [receipt, setReceipt] = useState<Transaction | null>(null);
   const [shortcutHint, setShortcutHint] = useState(false);
+  const [heldList, setHeldList] = useState<Transaction[]>([]);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
-  function loadData() {
-    setProducts(productService.getActive());
-    setCategories(categoryService.getActive());
+  async function loadData() {
+    const [activeProducts, activeCategories, heldTransactions] = await Promise.all([
+      productService.getActive(),
+      categoryService.getActive(),
+      transactionService.getHeld(),
+    ]);
+    setProducts(activeProducts);
+    setCategories(activeCategories);
+    setHeldList(heldTransactions);
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      loadData();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await loadData();
+      if (active) setLoading(false);
     }, 350);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   useEffect(() => {
@@ -84,7 +96,7 @@ export default function TransaksiBaru() {
   }, [products, search, activeCategory]);
 
   function getMaxStock(productId: string) {
-    const product = productService.getById(productId);
+    const product = products.find((item) => item.id === productId);
     return product?.trackStock ? product.stock : undefined;
   }
 
@@ -105,12 +117,13 @@ export default function TransaksiBaru() {
     resetCashFields();
   }
 
-  function handleHold() {
+  async function handleHold() {
     if (cart.items.length === 0 || !user) return;
-    transactionService.checkout(cart.items, paymentMethod, user, {
+    await transactionService.checkout(cart.items, paymentMethod, user, {
       extraCharge: extraChargeValue,
       status: "ditahan",
     });
+    await loadData();
     showToast("success", "Transaksi ditahan", "Anda bisa melanjutkannya nanti dari daftar hold");
     handleReset();
   }
@@ -120,13 +133,13 @@ export default function TransaksiBaru() {
     const cash = Number(cashReceived) || 0;
     if (paymentMethod === "tunai" && cash < grandTotal) return;
     setProcessing(true);
-    setTimeout(() => {
-      const tx = transactionService.checkout(cart.items, paymentMethod, user, {
+    setTimeout(async () => {
+      const tx = await transactionService.checkout(cart.items, paymentMethod, user, {
         extraCharge: extraChargeValue,
         cashReceived: paymentMethod === "tunai" ? cash : undefined,
         status: "selesai",
       });
-      loadData();
+      await loadData();
       handleReset();
       setProcessing(false);
       setMobileCartOpen(false);
@@ -135,17 +148,16 @@ export default function TransaksiBaru() {
     }, 500);
   }
 
-  function resumeHeld(tx: Transaction) {
+  async function resumeHeld(tx: Transaction) {
     cart.loadItems(tx.items);
     setPaymentMethod(tx.paymentMethod);
     setExtraCharge(tx.extraCharge ? String(tx.extraCharge) : "");
     setCashReceived("");
-    transactionService.resumeHeld(tx.id);
+    await transactionService.resumeHeld(tx.id);
+    await loadData();
     setHeldOpen(false);
     showToast("info", "Transaksi hold dilanjutkan");
   }
-
-  const heldList = transactionService.getHeld();
 
   return (
     <div className="fade-in">

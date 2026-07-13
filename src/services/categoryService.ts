@@ -1,29 +1,29 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import type { Category } from "../types";
 
 export const categoryService = {
-  getAll(): Category[] {
-    return storageService
-      .getAll<Category>(STORAGE_KEYS.CATEGORIES)
+  async getAll(): Promise<Category[]> {
+    return (await storageService
+      .getAll<Category>(DB_TABLES.CATEGORIES))
       .sort((a, b) => a.name.localeCompare(b.name));
   },
 
-  getActive(): Category[] {
-    return this.getAll().filter((c) => c.active);
+  async getActive(): Promise<Category[]> {
+    return (await this.getAll()).filter((c) => c.active);
   },
 
-  create(data: Omit<Category, "id" | "createdAt">): Category {
+  async create(data: Omit<Category, "id" | "createdAt">): Promise<Category> {
     const category: Category = { ...data, id: uuid(), createdAt: new Date().toISOString() };
-    return storageService.insert(STORAGE_KEYS.CATEGORIES, category);
+    return storageService.insert(DB_TABLES.CATEGORIES, category);
   },
 
-  update(id: string, patch: Partial<Category>): Category | undefined {
-    return storageService.update<Category>(STORAGE_KEYS.CATEGORIES, id, patch);
+  async update(id: string, patch: Partial<Category>): Promise<Category | undefined> {
+    return storageService.update<Category>(DB_TABLES.CATEGORIES, id, patch);
   },
 
-  remove(id: string): void {
-    storageService.remove<Category>(STORAGE_KEYS.CATEGORIES, id);
+  async remove(id: string): Promise<void> {
+    await storageService.remove(DB_TABLES.CATEGORIES, id);
   },
 };

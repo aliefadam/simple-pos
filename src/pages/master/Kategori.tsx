@@ -24,16 +24,21 @@ export default function Kategori() {
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  function load() {
-    setCategories(categoryService.getAll());
+  async function load() {
+    setCategories(await categoryService.getAll());
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      load();
-      setLoading(false);
+    let active = true;
+    const t = setTimeout(async () => {
+      if (!active) return;
+      await load();
+      if (active) setLoading(false);
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, []);
 
   function openCreate() {
@@ -48,20 +53,20 @@ export default function Kategori() {
     setModalOpen(true);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.name.trim()) {
       showToast("error", "Nama kategori wajib diisi");
       return;
     }
     if (editing) {
-      categoryService.update(editing.id, form);
+      await categoryService.update(editing.id, form);
       showToast("success", "Kategori diperbarui");
     } else {
-      categoryService.create(form);
+      await categoryService.create(form);
       showToast("success", "Kategori ditambahkan");
     }
     setModalOpen(false);
-    load();
+    await load();
   }
 
   async function handleDelete(cat: Category) {
@@ -72,8 +77,8 @@ export default function Kategori() {
       confirmLabel: "Ya, Hapus",
     });
     if (!ok) return;
-    categoryService.remove(cat.id);
-    load();
+    await categoryService.remove(cat.id);
+    await load();
     showToast("success", "Kategori dihapus");
   }
 

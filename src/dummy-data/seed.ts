@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { STORAGE_KEYS } from "../constants";
+import { DB_TABLES, SETTINGS_ROW_ID } from "../constants";
 import { storageService } from "../services/storageService";
 import type {
   User,
@@ -351,28 +351,26 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
 };
 
-export function seedDatabaseIfNeeded(): void {
-  const seeded = localStorage.getItem(STORAGE_KEYS.SEEDED);
-  if (seeded) return;
+export async function seedDatabaseIfNeeded(): Promise<void> {
+  const users = await storageService.getAll<User>(DB_TABLES.USERS);
+  if (users.length > 0) return;
 
-  storageService.saveAll(STORAGE_KEYS.USERS, USERS);
-  storageService.saveAll(STORAGE_KEYS.CATEGORIES, CATEGORIES);
-  storageService.saveAll(STORAGE_KEYS.PRODUCTS, PRODUCTS);
-  storageService.saveAll(STORAGE_KEYS.TRANSACTIONS, buildTransactions());
-  storageService.saveAll(STORAGE_KEYS.STOCK_MOVEMENTS, buildStockMovements());
-  storageService.saveAll(STORAGE_KEYS.EXPENSES, buildExpenses());
-  storageService.setObject(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
-  localStorage.setItem(STORAGE_KEYS.SEEDED, "true");
+  await storageService.replaceAll(DB_TABLES.USERS, USERS);
+  await storageService.replaceAll(DB_TABLES.CATEGORIES, CATEGORIES);
+  await storageService.replaceAll(DB_TABLES.PRODUCTS, PRODUCTS);
+  await storageService.replaceAll(DB_TABLES.TRANSACTIONS, buildTransactions());
+  await storageService.replaceAll(DB_TABLES.STOCK_MOVEMENTS, buildStockMovements());
+  await storageService.replaceAll(DB_TABLES.EXPENSES, buildExpenses());
+  await storageService.setObject(DB_TABLES.SETTINGS, SETTINGS_ROW_ID, DEFAULT_SETTINGS);
 }
 
-export function resetDummyData(): void {
-  localStorage.removeItem(STORAGE_KEYS.SEEDED);
-  localStorage.removeItem(STORAGE_KEYS.USERS);
-  localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
-  localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-  localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-  localStorage.removeItem(STORAGE_KEYS.STOCK_MOVEMENTS);
-  localStorage.removeItem(STORAGE_KEYS.EXPENSES);
-  localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-  seedDatabaseIfNeeded();
+export async function resetDummyData(): Promise<void> {
+  await storageService.replaceAll(DB_TABLES.USERS, []);
+  await storageService.replaceAll(DB_TABLES.CATEGORIES, []);
+  await storageService.replaceAll(DB_TABLES.PRODUCTS, []);
+  await storageService.replaceAll(DB_TABLES.TRANSACTIONS, []);
+  await storageService.replaceAll(DB_TABLES.STOCK_MOVEMENTS, []);
+  await storageService.replaceAll(DB_TABLES.EXPENSES, []);
+  await storageService.setObject(DB_TABLES.SETTINGS, SETTINGS_ROW_ID, DEFAULT_SETTINGS);
+  await seedDatabaseIfNeeded();
 }
