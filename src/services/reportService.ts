@@ -1,0 +1,130 @@
+import { transactionService } from "./transactionService";
+import { expenseService } from "./expenseService";
+import { productService } from "./productService";
+import { isSameDay } from "../utils/format";
+import type { Transaction } from "../types";
+
+export interface DashboardStats {
+  omsetHariIni: number;
+  jumlahTransaksiHariIni: number;
+  produkTerjualHariIni: number;
+  produkHampirHabis: number;
+  pengeluaranHariIni: number;
+}
+
+export interface DailyPoint {
+  label: string;
+  date: string;
+  omset: number;
+  transaksi: number;
+}
+
+export interface TopProduct {
+  productId: string;
+  name: string;
+  image: string;
+  qty: number;
+  total: number;
+}
+
+export const reportService = {
+  getDashboardStats(): DashboardStats {
+    const todayTx = transactionService.getToday();
+    const omsetHariIni = todayTx.reduce((s, t) => s + t.total, 0);
+    const produkTerjualHariIni = todayTx.reduce(
+      (s, t) => s + t.items.reduce((si, it) => si + it.qty, 0),
+      0
+    );
+    const produkHampirHabis = productService.getLowStock().length + productService.getOutOfStock().length;
+    const pengeluaranHariIni = expenseService.getToday().reduce((s, e) => s + e.amount, 0);
+    return {
+      omsetHariIni,
+      jumlahTransaksiHariIni: todayTx.length,
+      produkTerjualHariIni,
+      produkHampirHabis,
+      pengeluaranHariIni,
+    };
+  },
+
+  getWeeklySales(): DailyPoint[] {
+    const all = transactionService.getAll().filter((t) => t.status === "selesai");
+    const points: DailyPoint[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString();
+      const dayTx = all.filter((t) => isSameDay(t.date, iso));
+      points.push({
+        label: new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(d),
+        date: iso,
+        omset: dayTx.reduce((s, t) => s + t.total, 0),
+        transaksi: dayTx.length,
+      });
+    }
+    return points;
+  },
+
+  getMonthlySales(monthsBack = 6): { label: string; omset: number }[] {
+    const all = transactionService.getAll().filter((t) => t.status === "selesai");
+    const points: { label: string; omset: number }[] = [];
+    for (let i = monthsBack - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthTx = all.filter((t) => {
+        const td = new Date(t.date);
+        return td.getFullYear() === d.getFullYear() && td.getMonth() === d.getMonth();
+      });
+      points.push({
+        label: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(d),
+        omset: monthTx.reduce((s, t) => s + t.total, 0),
+      });
+    }
+    return points;
+  },
+
+  getTopProducts(transactions?: Transaction[], limit = 5): TopProduct[] {
+    const source = transactions ?? transactionService.getAll().filter((t) => t.status === "selesai");
+    const map = new Map<string, TopProduct>();
+    source.forEach((t) => {
+      t.items.forEach((item) => {
+        const existing = map.get(item.productId);
+        if (existing) {
+          existing.qty += item.qty;
+          existing.total += item.price * item.qty;
+        } else {
+          map.set(item.productId, {
+            productId: item.productId,
+            name: item.name,
+            image: item.image,
+            qty: item.qty,
+            total: item.price * item.qty,
+          });
+        }
+      });
+    });
+    return Array.from(map.values())
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, limit);
+  },
+
+  getLeastSoldProducts(limit = 5): TopProduct[] {
+    const all = this.getTopProducts(undefined, 999);
+    const products = productService.getActive();
+    const sold = new Set(all.map((p) => p.productId));
+    const unsold: TopProduct[] = products
+      .filter((p) => !sold.has(p.id))
+      .map((p) => ({ productId: p.id, name: p.name, image: p.image, qty: 0, total: 0 }));
+    return [...unsold, ...all.slice().reverse()].slice(0, limit);
+  },
+
+  getProfitSimple(): { pendapatan: number; pengeluaran: number; laba: number } {
+    const pendapatan = transactionService.getThisMonth().reduce((s, t) => s + t.total, 0);
+    const pengeluaran = expenseService.getThisMonth().reduce((s, e) => s + e.amount, 0);
+    return { pendapatan, pengeluaran, laba: pendapatan - pengeluaran };
+  },
+
+  getRecentActivity(limit = 8) {
+    const transactions = transactionService.getAll().slice(0, limit);
+    return transactions;
+  },
+};

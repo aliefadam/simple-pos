@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 dark:bg-[#0b0f19] dark:text-slate-100;
+    transition: background-color 250ms ease, color 250ms ease;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.4);
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 250ms ease both;
+  }
+  .slide-up {
+    animation: slideUp 250ms ease both;
+  }
+  .scale-in {
+    animation: scaleIn 200ms ease both;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.15) 25%, rgba(148, 163, 184, 0.3) 37%, rgba(148, 163, 184, 0.15) 63%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease infinite;
+}
