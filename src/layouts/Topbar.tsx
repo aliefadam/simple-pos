@@ -48,7 +48,7 @@ export function Topbar({ onOpenMobile }: TopbarProps) {
         <i className="fi fi-rr-menu-burger text-base" />
       </button>
 
-      <div className="flex-col sm:flex">
+      <div className="hidden flex-col sm:flex">
         <p className="text-sm font-semibold capitalize text-slate-700 dark:text-slate-200">
           {dateLabel}
         </p>

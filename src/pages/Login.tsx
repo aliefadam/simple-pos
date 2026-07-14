@@ -12,8 +12,8 @@ export default function Login() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("owner");
-  const [password, setPassword] = useState("password");
+  const [username, setUsername] = useState("prabowo");
+  const [password, setPassword] = useState("123123");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -45,11 +45,11 @@ export default function Login() {
 
   function fillDemo(role: "owner" | "kasir") {
     if (role === "owner") {
-      setUsername("owner");
-      setPassword("password");
+      setUsername("prabowo");
+      setPassword("123123");
     } else {
-      setUsername("kasir");
-      setPassword("password");
+      setUsername("gibran");
+      setPassword("123123");
     }
   }
 

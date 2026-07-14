@@ -13,6 +13,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import { expenseService } from "../../services/expenseService";
+import { shiftService } from "../../services/shiftService";
 import { EXPENSE_CATEGORIES } from "../../constants";
 import {
   formatCurrency,
@@ -124,7 +125,22 @@ export default function Pengeluaran() {
     [isOwner],
   );
 
-  function openCreate() {
+  async function ensureShiftOpenForKaryawan() {
+    if (isOwner) return true;
+    const open = await shiftService.getOpen();
+    if (!open) {
+      showToast(
+        "warning",
+        "Shift belum dibuka",
+        "Buka shift di halaman Transaksi Baru sebelum mencatat pengeluaran",
+      );
+      return false;
+    }
+    return true;
+  }
+
+  async function openCreate() {
+    if (!(await ensureShiftOpenForKaryawan())) return;
     setEditing(null);
     setForm({
       ...emptyForm,
@@ -189,6 +205,9 @@ export default function Pengeluaran() {
         "Kategori dibatasi",
         "Karyawan tidak dapat memilih kategori ini",
       );
+      return;
+    }
+    if (!editing && !(await ensureShiftOpenForKaryawan())) {
       return;
     }
 
