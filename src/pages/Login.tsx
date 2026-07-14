@@ -12,8 +12,8 @@ export default function Login() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("prabowo");
-  const [password, setPassword] = useState("123123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -111,23 +111,6 @@ export default function Login() {
           <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
             Silakan login menggunakan akun karyawan atau owner.
           </p>
-
-          <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              onClick={() => fillDemo("owner")}
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-400"
-            >
-              Isi akun Owner
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemo("kasir")}
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500 transition hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-400"
-            >
-              Isi akun Karyawan
-            </button>
-          </div>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-1.5">

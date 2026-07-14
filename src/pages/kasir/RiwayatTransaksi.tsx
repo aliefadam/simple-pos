@@ -78,6 +78,7 @@ export default function RiwayatTransaksi() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function handleCancel(tx: Transaction) {
+    if (!user) return;
     const ok = await confirm({
       title: "Batalkan transaksi?",
       message: `Transaksi ${tx.code} akan dibatalkan. Tindakan ini hanya bisa dilakukan Owner.`,
@@ -85,7 +86,7 @@ export default function RiwayatTransaksi() {
       confirmLabel: "Ya, Batalkan",
     });
     if (!ok) return;
-    await transactionService.cancel(tx.id);
+    await transactionService.cancel(tx.id, user);
     await loadData();
     showToast("success", "Transaksi dibatalkan");
   }

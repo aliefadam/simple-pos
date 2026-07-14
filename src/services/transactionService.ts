@@ -2,6 +2,7 @@ import { v4 as uuid } from "uuid";
 import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import { productService } from "./productService";
+import { stockService } from "./stockService";
 import { isSameDay, isSameMonth } from "../utils/format";
 import type { CartItem, PaymentMethod, Transaction, TransactionStatus, User } from "../types";
 
@@ -71,7 +72,13 @@ export const transactionService = {
       for (const item of items) {
         const product = await productService.getById(item.productId);
         if (product?.trackStock) {
-          await productService.adjustStock(item.productId, -item.qty);
+          await stockService.record(
+            item.productId,
+            "keluar-transaksi",
+            -item.qty,
+            `Terjual di transaksi ${transaction.code}`,
+            cashier,
+          );
         }
       }
     }
@@ -85,8 +92,28 @@ export const transactionService = {
     return tx;
   },
 
-  async cancel(id: string): Promise<void> {
-    await storageService.update<Transaction>(DB_TABLES.TRANSACTIONS, id, { status: "dibatalkan" });
+  async cancel(id: string, actor: User): Promise<void> {
+    const transaction = await this.getById(id);
+    if (!transaction) return;
+
+    if (transaction.status === "selesai") {
+      for (const item of transaction.items) {
+        const product = await productService.getById(item.productId);
+        if (product?.trackStock) {
+          await stockService.record(
+            item.productId,
+            "penyesuaian",
+            item.qty,
+            `Pengembalian stok dari pembatalan transaksi ${transaction.code}`,
+            actor,
+          );
+        }
+      }
+    }
+
+    await storageService.update<Transaction>(DB_TABLES.TRANSACTIONS, id, {
+      status: "dibatalkan",
+    });
   },
 
   async remove(id: string): Promise<void> {
