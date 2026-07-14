@@ -5,9 +5,10 @@ import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Input, Select, Textarea } from "../../components/ui/Field";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { SkeletonRow } from "../../components/ui/Skeleton";
+import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
+import { RefreshButton } from "../../components/ui/RefreshButton";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
@@ -51,6 +52,14 @@ export default function Pengeluaran() {
   const [submitting, setSubmitting] = useState(false);
   const [totalThisMonth, setTotalThisMonth] = useState(0);
   const [totalToday, setTotalToday] = useState(0);
+  const [viewingReceipt, setViewingReceipt] = useState<Expense | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  function visibleTo(list: Expense[]) {
+    return isOwner
+      ? list
+      : list.filter((e) => e.createdByUserId === (user?.id ?? ""));
+  }
 
   async function load() {
     const [allExpenses, monthExpenses, todayExpenses] = await Promise.all([
@@ -58,9 +67,11 @@ export default function Pengeluaran() {
       expenseService.getThisMonth(),
       expenseService.getToday(),
     ]);
-    setExpenses(allExpenses);
-    setTotalThisMonth(monthExpenses.reduce((s, e) => s + e.amount, 0));
-    setTotalToday(todayExpenses.reduce((s, e) => s + e.amount, 0));
+    setExpenses(visibleTo(allExpenses));
+    setTotalThisMonth(
+      visibleTo(monthExpenses).reduce((s, e) => s + e.amount, 0),
+    );
+    setTotalToday(visibleTo(todayExpenses).reduce((s, e) => s + e.amount, 0));
   }
 
   useEffect(() => {
@@ -75,6 +86,17 @@ export default function Pengeluaran() {
       clearTimeout(t);
     };
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await load();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   const filtered = useMemo(
     () =>
@@ -183,7 +205,9 @@ export default function Pengeluaran() {
         category: form.category,
         amount: Number(form.amount),
         note: form.note,
+        createdByUserId: editing?.createdByUserId ?? user?.id ?? "",
         createdBy: user?.name ?? "Owner",
+        createdByRole: editing?.createdByRole ?? user?.role ?? "owner",
         receiptImage: uploadedReceipt.receiptImage,
         receiptImageName: uploadedReceipt.receiptImageName,
         createdAt: editing?.createdAt ?? new Date().toISOString(),
@@ -254,9 +278,12 @@ export default function Pengeluaran() {
             </span>
           </p>
         </div>
-        <Button icon="fi fi-rr-add" onClick={openCreate}>
-          Tambah Pengeluaran
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={refreshing} onClick={handleRefresh} />
+          <Button icon="fi fi-rr-add" onClick={openCreate}>
+            Tambah Pengeluaran
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -274,7 +301,68 @@ export default function Pengeluaran() {
             />
           </div>
         </div>
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2 p-4">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            ))
+          ) : paginated.length === 0 ? (
+            <EmptyState
+              icon="fi fi-rr-receipt"
+              title="Belum ada pengeluaran"
+              action={
+                <Button size="sm" onClick={openCreate}>
+                  Tambah Pengeluaran
+                </Button>
+              }
+            />
+          ) : (
+            paginated.map((exp) => (
+              <div key={exp.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Badge tone="indigo">{exp.category}</Badge>
+                    <p className="mt-1 text-xs text-slate-400">{formatDate(exp.date)}</p>
+                  </div>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(exp.amount)}</span>
+                </div>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{exp.note}</p>
+                <div className="mt-3 flex items-center gap-1">
+                  {exp.receiptImage && (
+                    <button
+                      onClick={() => setViewingReceipt(exp)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                      title="Lihat struk/nota"
+                    >
+                      <i className="fi fi-rr-picture text-sm" />
+                    </button>
+                  )}
+                  {isOwner && (
+                    <>
+                      <button
+                        onClick={() => openEdit(exp)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                      >
+                        <i className="fi fi-rr-edit text-sm" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(exp)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                      >
+                        <i className="fi fi-rr-trash text-sm" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="mt-3 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-y border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
@@ -282,17 +370,17 @@ export default function Pengeluaran() {
                 <th className="px-5 py-3">Kategori</th>
                 <th className="px-5 py-3">Nominal</th>
                 <th className="px-5 py-3">Keterangan</th>
-                {isOwner && <th className="px-5 py-3 text-right">Aksi</th>}
+                <th className="px-5 py-3 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <SkeletonRow key={i} cols={isOwner ? 5 : 4} />
+                  <SkeletonRow key={i} cols={5} />
                 ))
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={isOwner ? 5 : 4}>
+                  <td colSpan={5}>
                     <EmptyState
                       icon="fi fi-rr-receipt"
                       title="Belum ada pengeluaran"
@@ -322,24 +410,35 @@ export default function Pengeluaran() {
                     <td className="px-5 py-3 text-slate-500 dark:text-slate-400">
                       {exp.note}
                     </td>
-                    {isOwner && (
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-1">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {exp.receiptImage && (
                           <button
-                            onClick={() => openEdit(exp)}
+                            onClick={() => setViewingReceipt(exp)}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                            title="Lihat struk/nota"
                           >
-                            <i className="fi fi-rr-edit text-sm" />
+                            <i className="fi fi-rr-picture text-sm" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(exp)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
-                          >
-                            <i className="fi fi-rr-trash text-sm" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                        )}
+                        {isOwner && (
+                          <>
+                            <button
+                              onClick={() => openEdit(exp)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                            >
+                              <i className="fi fi-rr-edit text-sm" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(exp)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                            >
+                              <i className="fi fi-rr-trash text-sm" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -437,6 +536,33 @@ export default function Pengeluaran() {
             )}
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={!!viewingReceipt}
+        onClose={() => setViewingReceipt(null)}
+        title="Struk / Nota"
+        size="md"
+      >
+        {viewingReceipt && (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/40">
+              <img
+                src={viewingReceipt.receiptImage}
+                alt="Struk atau nota"
+                className="max-h-[65vh] w-full object-contain"
+              />
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500 dark:text-slate-400">
+                {viewingReceipt.category} &middot; {formatDate(viewingReceipt.date)}
+              </span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">
+                {formatCurrency(viewingReceipt.amount)}
+              </span>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

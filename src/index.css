@@ -44,6 +44,21 @@
   .scale-in {
     animation: scaleIn 200ms ease both;
   }
+  .fade-out {
+    animation: fadeOut 200ms ease both;
+  }
+  .sheet-in {
+    animation: sheetIn 280ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .sheet-out {
+    animation: sheetOut 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  .added-pop {
+    animation: addedPop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .added-bump {
+    animation: addedBump 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -81,6 +96,57 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheetIn {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheetOut {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes addedPop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(0.93);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes addedBump {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  40% {
+    transform: scale(1.35) rotate(-8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
   }
 }
 

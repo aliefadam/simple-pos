@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { AppBrand } from "../components/AppBrand";
+import { Button } from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useToast } from "../context/ToastContext";
-import { Button } from "../components/ui/Button";
 
 export default function Login() {
   const { login } = useAuth();
@@ -22,6 +23,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     setTimeout(() => {
       login(username, password, remember)
         .then((user) => {
@@ -69,37 +71,38 @@ export default function Login() {
 
       <div className="relative z-10 grid w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-2xl shadow-slate-300/30 dark:border-slate-800 dark:bg-slate-900 dark:shadow-none lg:grid-cols-2">
         <div className="hidden flex-col justify-between bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-10 text-white lg:flex">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur">
-              <i className="fi fi-rr-shop text-lg" />
-            </div>
-            <span className="text-lg font-bold">Angkringan POS</span>
+          <div className="[&_p:first-child]:text-white [&_p:last-child]:text-indigo-100">
+            <AppBrand
+              compact
+              title="Angkringan POS"
+              subtitle="Point of Sales"
+              imageClassName="ring-1 ring-white/20"
+            />
           </div>
 
           <div className="slide-up space-y-6">
-            <div className="grid grid-cols-2 gap-3"></div>
+            <div className="grid grid-cols-2 gap-3" />
             <h2 className="text-2xl font-bold leading-snug">
-              Kelola kasir warung & angkringan Anda dengan lebih mudah.
+              Kelola kasir dan operasional toko Anda dengan lebih mudah.
             </h2>
             <p className="text-sm text-indigo-100">
-              Catat transaksi, pantau stok, dan lihat laporan usaha kapan saja —
-              semua dalam satu aplikasi.
+              Catat transaksi, pantau stok, dan lihat laporan usaha kapan saja
+              dalam satu aplikasi.
             </p>
           </div>
 
           <p className="text-xs text-indigo-200">
-            © {new Date().getFullYear()} Angkringan POS. Internal use only.
+            &copy; {new Date().getFullYear()} Angkringan POS. Internal use only.
           </p>
         </div>
 
         <div className="p-8 sm:p-10">
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
-              <i className="fi fi-rr-shop text-lg" />
-            </div>
-            <span className="text-lg font-bold text-slate-900 dark:text-white">
-              Angkringan POS
-            </span>
+          <div className="mb-8 lg:hidden">
+            <AppBrand
+              compact
+              title="Angkringan POS"
+              subtitle="Point of Sales"
+            />
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">

@@ -5,8 +5,9 @@ import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Input, Select } from "../../components/ui/Field";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { SkeletonRow } from "../../components/ui/Skeleton";
+import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
+import { RefreshButton } from "../../components/ui/RefreshButton";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
@@ -29,6 +30,7 @@ export default function UserManagement() {
   const [resetPassword, setResetPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     setUsers(await userService.getAll());
@@ -46,6 +48,17 @@ export default function UserManagement() {
       clearTimeout(t);
     };
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await load();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   function openCreate() {
     setEditing(null);
@@ -130,13 +143,61 @@ export default function UserManagement() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Manajemen User</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola akses Owner dan Karyawan.</p>
         </div>
-        <Button icon="fi fi-rr-user-add" onClick={openCreate}>
-          Tambah User
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={refreshing} onClick={handleRefresh} />
+          <Button icon="fi fi-rr-user-add" onClick={openCreate}>
+            Tambah User
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                <Skeleton className="h-4 flex-1" />
+              </div>
+            ))
+          ) : users.length === 0 ? (
+            <EmptyState icon="fi fi-rr-users" title="Belum ada user" />
+          ) : (
+            users.map((u) => (
+              <div key={u.id} className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-xs font-semibold text-white">
+                      {u.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-700 dark:text-slate-200">{u.name}</p>
+                      <p className="text-xs text-slate-400">{u.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button onClick={() => openResetPassword(u)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-500/10" title="Reset password">
+                      <i className="fi fi-rr-key text-sm" />
+                    </button>
+                    <button onClick={() => openEdit(u)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+                      <i className="fi fi-rr-edit text-sm" />
+                    </button>
+                    <button onClick={() => handleDelete(u)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10">
+                      <i className="fi fi-rr-trash text-sm" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge tone={u.role === "owner" ? "indigo" : "blue"}>{u.role}</Badge>
+                  <Badge tone={u.active ? "green" : "slate"}>{u.active ? "Aktif" : "Nonaktif"}</Badge>
+                  <span className="text-xs text-slate-400">Bergabung {formatDate(u.createdAt)}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">

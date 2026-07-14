@@ -80,6 +80,9 @@ const TONE_CLASSES: Record<string, string> = {
 
 export default function Dashboard() {
   const { user, isOwner } = useAuth();
+  const visibleStats = isOwner
+    ? statConfig
+    : statConfig.filter((item) => item.key !== "pengeluaranHariIni");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [weekly, setWeekly] = useState<DailyPoint[]>([]);
@@ -103,7 +106,7 @@ export default function Dashboard() {
         recentActivity,
         dbStatus,
       ] = await Promise.all([
-        reportService.getDashboardStats(),
+        reportService.getDashboardStats({ includeExpenses: isOwner }),
         reportService.getWeeklySales(),
         reportService.getTopProducts(undefined, 5),
         productService.getLowStock(),
@@ -151,16 +154,18 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div
+        className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${isOwner ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+      >
         {loading
-          ? Array.from({ length: 5 }).map((_, i) => (
+          ? Array.from({ length: visibleStats.length }).map((_, i) => (
               <Card key={i} className="p-5">
                 <Skeleton className="h-9 w-9 rounded-lg" />
                 <Skeleton className="mt-4 h-6 w-24" />
                 <Skeleton className="mt-2 h-3 w-32" />
               </Card>
             ))
-          : statConfig.map((s, idx) => {
+          : visibleStats.map((s, idx) => {
               const value = stats?.[s.key as keyof DashboardStats] ?? 0;
               return (
                 <Card

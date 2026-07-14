@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { MENU } from "../constants/menu";
+import { AppBrand } from "../components/AppBrand";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../utils/cn";
 
@@ -32,16 +33,8 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
   const content = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
-          <i className="fi fi-rr-shop text-base" />
-        </div>
-        <div>
-          <p className="text-sm font-bold leading-none text-slate-900 dark:text-white">
-            Angkringan POS
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">Point of Sales</p>
-        </div>
+      <div className="px-5 py-5">
+        <AppBrand compact />
       </div>
 
       <nav className="no-scrollbar flex-1 space-y-1 overflow-y-auto px-3 pb-4">

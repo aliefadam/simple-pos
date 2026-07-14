@@ -5,8 +5,9 @@ import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Input, Select } from "../../components/ui/Field";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { SkeletonRow } from "../../components/ui/Skeleton";
+import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
+import { RefreshButton } from "../../components/ui/RefreshButton";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { categoryService } from "../../services/categoryService";
@@ -23,6 +24,7 @@ export default function Kategori() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     setCategories(await categoryService.getAll());
@@ -40,6 +42,17 @@ export default function Kategori() {
       clearTimeout(t);
     };
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await load();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   function openCreate() {
     setEditing(null);
@@ -90,13 +103,49 @@ export default function Kategori() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Kategori Produk</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola pengelompokan produk toko Anda.</p>
         </div>
-        <Button icon="fi fi-rr-add" onClick={openCreate}>
-          Tambah Kategori
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={refreshing} onClick={handleRefresh} />
+          <Button icon="fi fi-rr-add" onClick={openCreate}>
+            Tambah Kategori
+          </Button>
+        </div>
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
+                <Skeleton className="h-4 flex-1" />
+              </div>
+            ))
+          ) : categories.length === 0 ? (
+            <EmptyState icon="fi fi-rr-apps-add" title="Belum ada kategori" action={<Button size="sm" onClick={openCreate}>Tambah Kategori</Button>} />
+          ) : (
+            categories.map((cat) => (
+              <div key={cat.id} className="flex items-center gap-3 p-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  <i className={`fi ${cat.icon}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-700 dark:text-slate-200">{cat.name}</p>
+                  <Badge tone={cat.active ? "green" : "slate"}>{cat.active ? "Aktif" : "Nonaktif"}</Badge>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button onClick={() => openEdit(cat)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+                    <i className="fi fi-rr-edit text-sm" />
+                  </button>
+                  <button onClick={() => handleDelete(cat)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10">
+                    <i className="fi fi-rr-trash text-sm" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">

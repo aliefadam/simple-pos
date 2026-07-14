@@ -345,15 +345,24 @@ function buildExpenses(): Expense[] {
     { category: "Lain-lain", amount: 30000, note: "Beli tisu & sabun cuci piring", daysAgo: 15 },
     { category: "Kemasan & Plastik", amount: 10000, note: "Beli sedotan & tusuk sate", daysAgo: 18 },
   ];
-  return items.map((it) => ({
-    id: uuid(),
-    date: dateAt(it.daysAgo, randInt(8, 19), randInt(0, 59)),
-    createdAt: new Date().toISOString(),
-    category: it.category,
-    amount: it.amount,
-    note: it.note,
-    createdBy: pick(["Pak Broto", "Siti Kasir", "Budi Santoso"]),
-  }));
+  return items.map((it) => {
+    const actor = pick([
+      { id: "user-owner", name: "Pak Broto", role: "owner" as const },
+      { id: "user-kasir", name: "Siti Kasir", role: "karyawan" as const },
+      { id: "user-kasir-2", name: "Budi Santoso", role: "karyawan" as const },
+    ]);
+    return {
+      id: uuid(),
+      date: dateAt(it.daysAgo, randInt(8, 19), randInt(0, 59)),
+      createdAt: new Date().toISOString(),
+      category: it.category,
+      amount: it.amount,
+      note: it.note,
+      createdByUserId: actor.id,
+      createdBy: actor.name,
+      createdByRole: actor.role,
+    };
+  });
 }
 
 const DEFAULT_SETTINGS: AppSettings = {

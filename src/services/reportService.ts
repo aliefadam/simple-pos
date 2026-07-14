@@ -28,7 +28,7 @@ export interface TopProduct {
 }
 
 export const reportService = {
-  async getDashboardStats(): Promise<DashboardStats> {
+  async getDashboardStats(options?: { includeExpenses?: boolean }): Promise<DashboardStats> {
     const todayTx = await transactionService.getToday();
     const omsetHariIni = todayTx.reduce((s, t) => s + t.total, 0);
     const produkTerjualHariIni = todayTx.reduce(
@@ -36,7 +36,9 @@ export const reportService = {
       0
     );
     const produkHampirHabis = (await productService.getLowStock()).length + (await productService.getOutOfStock()).length;
-    const pengeluaranHariIni = (await expenseService.getToday()).reduce((s, e) => s + e.amount, 0);
+    const pengeluaranHariIni = options?.includeExpenses
+      ? (await expenseService.getToday()).reduce((s, e) => s + e.amount, 0)
+      : 0;
     return {
       omsetHariIni,
       jumlahTransaksiHariIni: todayTx.length,

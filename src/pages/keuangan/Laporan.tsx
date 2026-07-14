@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -49,21 +50,47 @@ export default function Laporan() {
   }, []);
 
   function exportExcel() {
-    const rows = [["Bulan", "Omset"], ...monthly.map((m) => [m.label, String(m.omset)])];
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "laporan-penjualan.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("success", "Laporan diekspor", "File CSV/Excel berhasil diunduh");
-  }
+    const workbook = XLSX.utils.book_new();
 
-  function exportPDF() {
-    showToast("info", "Menyiapkan PDF", "Gunakan dialog print untuk simpan sebagai PDF");
-    setTimeout(() => window.print(), 400);
+    const summarySheet = XLSX.utils.json_to_sheet([
+      {
+        "Omset Hari Ini": todayStats.omset,
+        "Transaksi Hari Ini": todayStats.transaksi,
+        "Produk Terjual Hari Ini": todayStats.produkTerjual,
+        "Pendapatan Bulan Ini": profit.pendapatan,
+        "Pengeluaran Bulan Ini": profit.pengeluaran,
+        "Laba Sederhana": profit.laba,
+      },
+    ]);
+    const monthlySheet = XLSX.utils.json_to_sheet(
+      monthly.map((item) => ({
+        Bulan: item.label,
+        Omset: item.omset,
+      })),
+    );
+    const topProductsSheet = XLSX.utils.json_to_sheet(
+      topProducts.map((item, index) => ({
+        Peringkat: index + 1,
+        Produk: item.name,
+        "Qty Terjual": item.qty,
+        Total: item.total,
+      })),
+    );
+    const leastSoldSheet = XLSX.utils.json_to_sheet(
+      leastSold.map((item) => ({
+        Produk: item.name,
+        "Qty Terjual": item.qty,
+        Total: item.total,
+      })),
+    );
+
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan");
+    XLSX.utils.book_append_sheet(workbook, monthlySheet, "Penjualan Bulanan");
+    XLSX.utils.book_append_sheet(workbook, topProductsSheet, "Produk Terlaris");
+    XLSX.utils.book_append_sheet(workbook, leastSoldSheet, "Produk Kurang Laku");
+
+    XLSX.writeFile(workbook, "laporan-keuangan.xlsx");
+    showToast("success", "Laporan diekspor", "File Excel berhasil diunduh");
   }
 
   return (
@@ -76,7 +103,6 @@ export default function Laporan() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" icon="fi fi-rr-file-spreadsheet" onClick={exportExcel}>Export Excel</Button>
-          <Button variant="outline" icon="fi fi-rr-file-pdf" onClick={exportPDF}>Export PDF</Button>
         </div>
       </div>
 

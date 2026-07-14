@@ -3,9 +3,10 @@ import { Card, CardBody } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { SkeletonRow } from "../../components/ui/Skeleton";
+import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
 import { Modal } from "../../components/ui/Modal";
+import { RefreshButton } from "../../components/ui/RefreshButton";
 import { ReceiptModal } from "../../components/ReceiptModal";
 import { ProductAvatar } from "../../components/ProductAvatar";
 import { useAuth } from "../../context/AuthContext";
@@ -31,6 +32,7 @@ export default function RiwayatTransaksi() {
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<Transaction | null>(null);
   const [receipt, setReceipt] = useState<Transaction | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function loadData() {
     const all = isOwner ? await transactionService.getAll() : await transactionService.getByCashier(user?.id ?? "");
@@ -49,6 +51,17 @@ export default function RiwayatTransaksi() {
       clearTimeout(t);
     };
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await loadData();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -83,11 +96,14 @@ export default function RiwayatTransaksi() {
 
   return (
     <div className="fade-in space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Riwayat Transaksi</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {isOwner ? "Seluruh transaksi kasir." : "Transaksi yang Anda proses."}
-        </p>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Riwayat Transaksi</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {isOwner ? "Seluruh transaksi kasir." : "Transaksi yang Anda proses."}
+          </p>
+        </div>
+        <RefreshButton loading={refreshing} onClick={handleRefresh} />
       </div>
 
       <Card>
@@ -128,7 +144,63 @@ export default function RiwayatTransaksi() {
           </select>
         </CardBody>
 
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2 p-4">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            ))
+          ) : paginated.length === 0 ? (
+            <EmptyState icon="fi fi-rr-receipt" title="Belum ada transaksi" description="Transaksi akan muncul di sini" />
+          ) : (
+            paginated.map((tx) => (
+              <div key={tx.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-slate-700 dark:text-slate-200">{tx.code}</p>
+                    <p className="text-xs text-slate-400">{formatDate(tx.date, true)}</p>
+                  </div>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(tx.total)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Badge tone={tx.status === "selesai" ? "green" : tx.status === "ditahan" ? "amber" : "red"}>
+                    {tx.status}
+                  </Badge>
+                  <span className="text-xs text-slate-400">{tx.cashierName} &middot; {paymentLabel(tx.paymentMethod)}</span>
+                </div>
+                <div className="mt-3 flex items-center gap-1">
+                  <button
+                    onClick={() => setDetail(tx)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                    title="Detail"
+                  >
+                    <i className="fi fi-rr-eye text-sm" />
+                  </button>
+                  <button
+                    onClick={() => setReceipt(tx)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800"
+                    title="Cetak ulang struk"
+                  >
+                    <i className="fi fi-rr-print text-sm" />
+                  </button>
+                  {isOwner && tx.status === "selesai" && (
+                    <button
+                      onClick={() => handleCancel(tx)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                      title="Batalkan"
+                    >
+                      <i className="fi fi-rr-cross-circle text-sm" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-y border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">

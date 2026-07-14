@@ -5,6 +5,7 @@ import type {
   Category,
   Expense,
   Product,
+  Shift,
   StockMovement,
   Transaction,
   User,
@@ -18,6 +19,7 @@ type TableValueMap = {
   [DB_TABLES.STOCK_MOVEMENTS]: StockMovement;
   [DB_TABLES.EXPENSES]: Expense;
   [DB_TABLES.SETTINGS]: AppSettings;
+  [DB_TABLES.SHIFTS]: Shift;
 };
 
 type TableName = keyof TableValueMap;
@@ -171,7 +173,7 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
   },
   [DB_TABLES.EXPENSES]: {
     select:
-      "id,date,created_at,category,amount,note,created_by,receipt_image,receipt_image_name",
+      "id,date,created_at,category,amount,note,created_by_user_id,created_by,created_by_role,receipt_image,receipt_image_name",
     fromRow: (row): Expense => ({
       id: String(row.id),
       date: String(row.date ?? new Date().toISOString()),
@@ -181,7 +183,9 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
       category: String(row.category ?? ""),
       amount: Number(row.amount ?? 0),
       note: String(row.note ?? ""),
+      createdByUserId: String(row.created_by_user_id ?? ""),
       createdBy: String(row.created_by ?? ""),
+      createdByRole: row.created_by_role === "karyawan" ? "karyawan" : "owner",
       receiptImage: row.receipt_image
         ? String(row.receipt_image)
         : undefined,
@@ -196,9 +200,69 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
       category: item.category,
       amount: item.amount,
       note: item.note,
+      created_by_user_id: item.createdByUserId,
       created_by: item.createdBy,
+      created_by_role: item.createdByRole,
       receipt_image: item.receiptImage ?? null,
       receipt_image_name: item.receiptImageName ?? null,
+    }),
+  },
+  [DB_TABLES.SHIFTS]: {
+    select:
+      "id,cashier_id,cashier_name,closed_by_cashier_id,closed_by_cashier_name,opened_at,closed_at,opening_cash,total_cash_sales,total_cash_expenses,expected_cash,actual_cash,difference,notes,status",
+    fromRow: (row): Shift => ({
+      id: String(row.id),
+      cashierId: String(row.cashier_id ?? ""),
+      cashierName: String(row.cashier_name ?? ""),
+      closedByCashierId: row.closed_by_cashier_id
+        ? String(row.closed_by_cashier_id)
+        : undefined,
+      closedByCashierName: row.closed_by_cashier_name
+        ? String(row.closed_by_cashier_name)
+        : undefined,
+      openedAt: String(row.opened_at ?? new Date().toISOString()),
+      closedAt: row.closed_at ? String(row.closed_at) : undefined,
+      openingCash: Number(row.opening_cash ?? 0),
+      totalCashSales:
+        row.total_cash_sales === null || row.total_cash_sales === undefined
+          ? undefined
+          : Number(row.total_cash_sales),
+      totalCashExpenses:
+        row.total_cash_expenses === null ||
+        row.total_cash_expenses === undefined
+          ? undefined
+          : Number(row.total_cash_expenses),
+      expectedCash:
+        row.expected_cash === null || row.expected_cash === undefined
+          ? undefined
+          : Number(row.expected_cash),
+      actualCash:
+        row.actual_cash === null || row.actual_cash === undefined
+          ? undefined
+          : Number(row.actual_cash),
+      difference:
+        row.difference === null || row.difference === undefined
+          ? undefined
+          : Number(row.difference),
+      notes: row.notes ? String(row.notes) : undefined,
+      status: row.status === "tutup" ? "tutup" : "buka",
+    }),
+    toRow: (item: Shift) => ({
+      id: item.id,
+      cashier_id: item.cashierId,
+      cashier_name: item.cashierName,
+      closed_by_cashier_id: item.closedByCashierId ?? null,
+      closed_by_cashier_name: item.closedByCashierName ?? null,
+      opened_at: item.openedAt,
+      closed_at: item.closedAt ?? null,
+      opening_cash: item.openingCash,
+      total_cash_sales: item.totalCashSales ?? null,
+      total_cash_expenses: item.totalCashExpenses ?? null,
+      expected_cash: item.expectedCash ?? null,
+      actual_cash: item.actualCash ?? null,
+      difference: item.difference ?? null,
+      notes: item.notes ?? null,
+      status: item.status,
     }),
   },
   [DB_TABLES.SETTINGS]: {

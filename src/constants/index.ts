@@ -6,6 +6,7 @@ export const DB_TABLES = {
   STOCK_MOVEMENTS: "stock_movements",
   EXPENSES: "expenses",
   SETTINGS: "app_settings",
+  SHIFTS: "shifts",
 } as const;
 
 export const SETTINGS_ROW_ID = "default";

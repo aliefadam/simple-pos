@@ -73,7 +73,9 @@ create table if not exists public.expenses (
   category text not null default '',
   amount bigint not null default 0,
   note text not null default '',
+  created_by_user_id text not null default '',
   created_by text not null default '',
+  created_by_role text not null default 'owner',
   receipt_image text,
   receipt_image_name text,
   created_at timestamptz not null default now(),
@@ -87,6 +89,26 @@ create table if not exists public.app_settings (
   business_phone text not null default '',
   business_logo text,
   footer_note text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.shifts (
+  id text primary key,
+  cashier_id text not null default '',
+  cashier_name text not null default '',
+  closed_by_cashier_id text,
+  closed_by_cashier_name text,
+  opened_at timestamptz not null default now(),
+  closed_at timestamptz,
+  opening_cash bigint not null default 0,
+  total_cash_sales bigint,
+  total_cash_expenses bigint,
+  expected_cash bigint,
+  actual_cash bigint,
+  difference bigint,
+  notes text,
+  status text not null default 'buka',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -137,7 +159,9 @@ alter table public.expenses add column if not exists date timestamptz not null d
 alter table public.expenses add column if not exists category text not null default '';
 alter table public.expenses add column if not exists amount bigint not null default 0;
 alter table public.expenses add column if not exists note text not null default '';
+alter table public.expenses add column if not exists created_by_user_id text not null default '';
 alter table public.expenses add column if not exists created_by text not null default '';
+alter table public.expenses add column if not exists created_by_role text not null default 'owner';
 alter table public.expenses add column if not exists receipt_image text;
 alter table public.expenses add column if not exists receipt_image_name text;
 
@@ -146,6 +170,23 @@ alter table public.app_settings add column if not exists business_address text n
 alter table public.app_settings add column if not exists business_phone text not null default '';
 alter table public.app_settings add column if not exists business_logo text;
 alter table public.app_settings add column if not exists footer_note text not null default '';
+
+alter table public.shifts add column if not exists cashier_id text not null default '';
+alter table public.shifts add column if not exists cashier_name text not null default '';
+alter table public.shifts add column if not exists closed_by_cashier_id text;
+alter table public.shifts add column if not exists closed_by_cashier_name text;
+alter table public.shifts add column if not exists opened_at timestamptz not null default now();
+alter table public.shifts add column if not exists closed_at timestamptz;
+alter table public.shifts add column if not exists opening_cash bigint not null default 0;
+alter table public.shifts add column if not exists total_cash_sales bigint;
+alter table public.shifts add column if not exists total_cash_expenses bigint;
+alter table public.shifts add column if not exists expected_cash bigint;
+alter table public.shifts add column if not exists actual_cash bigint;
+alter table public.shifts add column if not exists difference bigint;
+alter table public.shifts add column if not exists notes text;
+alter table public.shifts add column if not exists status text not null default 'buka';
+
+create unique index if not exists shifts_one_open_idx on public.shifts (status) where status = 'buka';
 
 do $$
 begin
@@ -267,7 +308,9 @@ begin
       category = coalesce(payload->>'category', category),
       amount = coalesce((payload->>'amount')::bigint, amount),
       note = coalesce(payload->>'note', note),
+      created_by_user_id = coalesce(payload->>'createdByUserId', created_by_user_id),
       created_by = coalesce(payload->>'createdBy', created_by),
+      created_by_role = coalesce(payload->>'createdByRole', created_by_role),
       receipt_image = coalesce(payload->>'receiptImage', receipt_image),
       receipt_image_name = coalesce(payload->>'receiptImageName', receipt_image_name),
       created_at = coalesce((payload->>'createdAt')::timestamptz, (payload->>'date')::timestamptz, created_at)
@@ -325,6 +368,8 @@ drop trigger if exists expenses_set_updated_at on public.expenses;
 create trigger expenses_set_updated_at before update on public.expenses for each row execute function public.set_updated_at();
 drop trigger if exists app_settings_set_updated_at on public.app_settings;
 create trigger app_settings_set_updated_at before update on public.app_settings for each row execute function public.set_updated_at();
+drop trigger if exists shifts_set_updated_at on public.shifts;
+create trigger shifts_set_updated_at before update on public.shifts for each row execute function public.set_updated_at();
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;
@@ -337,6 +382,7 @@ alter table public.transactions enable row level security;
 alter table public.stock_movements enable row level security;
 alter table public.expenses enable row level security;
 alter table public.app_settings enable row level security;
+alter table public.shifts enable row level security;
 
 drop policy if exists "public access users" on public.users;
 create policy "public access users" on public.users for all using (true) with check (true);
@@ -352,6 +398,8 @@ drop policy if exists "public access expenses" on public.expenses;
 create policy "public access expenses" on public.expenses for all using (true) with check (true);
 drop policy if exists "public access app_settings" on public.app_settings;
 create policy "public access app_settings" on public.app_settings for all using (true) with check (true);
+drop policy if exists "public access shifts" on public.shifts;
+create policy "public access shifts" on public.shifts for all using (true) with check (true);
 
 insert into storage.buckets (id, name, public)
 values ('expense-receipts', 'expense-receipts', true)

@@ -83,9 +83,31 @@ export interface Expense {
   category: string;
   amount: number;
   note: string;
+  createdByUserId: string;
   createdBy: string;
+  createdByRole: Role;
   receiptImage?: string;
   receiptImageName?: string;
+}
+
+export type ShiftStatus = "buka" | "tutup";
+
+export interface Shift {
+  id: string;
+  cashierId: string;
+  cashierName: string;
+  closedByCashierId?: string;
+  closedByCashierName?: string;
+  openedAt: string;
+  closedAt?: string;
+  openingCash: number;
+  totalCashSales?: number;
+  totalCashExpenses?: number;
+  expectedCash?: number;
+  actualCash?: number;
+  difference?: number;
+  notes?: string;
+  status: ShiftStatus;
 }
 
 export interface BusinessProfile {

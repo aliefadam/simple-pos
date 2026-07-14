@@ -5,9 +5,10 @@ import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
 import { Input, Select } from "../../components/ui/Field";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { SkeletonRow } from "../../components/ui/Skeleton";
+import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
+import { RefreshButton } from "../../components/ui/RefreshButton";
 import { ProductAvatar } from "../../components/ProductAvatar";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
@@ -40,6 +41,7 @@ export default function Produk() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
     const [allProducts, allCategories] = await Promise.all([
@@ -62,6 +64,17 @@ export default function Produk() {
       clearTimeout(t);
     };
   }, []);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await load();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
@@ -144,9 +157,12 @@ export default function Produk() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Produk</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Kelola daftar produk yang dijual.</p>
         </div>
-        <Button icon="fi fi-rr-add" onClick={openCreate}>
-          Tambah Produk
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={refreshing} onClick={handleRefresh} />
+          <Button icon="fi fi-rr-add" onClick={openCreate}>
+            Tambah Produk
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -178,7 +194,50 @@ export default function Produk() {
           </select>
         </div>
 
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-4">
+                <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))
+          ) : paginated.length === 0 ? (
+            <EmptyState icon="fi fi-rr-box-open" title="Produk tidak ditemukan" action={<Button size="sm" onClick={openCreate}>Tambah Produk</Button>} />
+          ) : (
+            paginated.map((product) => (
+              <div key={product.id} className="flex items-start gap-3 p-4">
+                <ProductAvatar name={product.name} className="h-11 w-11 shrink-0 rounded-lg" textClassName="text-xs" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-slate-700 dark:text-slate-200">{product.name}</p>
+                    <div className="-mr-1.5 -mt-1.5 flex shrink-0 items-center gap-1">
+                      <button onClick={() => openEdit(product)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+                        <i className="fi fi-rr-edit text-sm" />
+                      </button>
+                      <button onClick={() => handleDelete(product)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10">
+                        <i className="fi fi-rr-trash text-sm" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">{categoryName(product.categoryId)}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(product.price)}</span>
+                    <Badge tone={!product.trackStock ? "slate" : product.stock === 0 ? "red" : product.stock <= 10 ? "amber" : "green"}>
+                      {!product.trackStock ? "Tanpa stok" : `${product.stock} pcs`}
+                    </Badge>
+                    <Badge tone={product.active ? "green" : "slate"}>{product.active ? "Aktif" : "Nonaktif"}</Badge>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="mt-3 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-y border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800">
