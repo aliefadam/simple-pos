@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Offline - Kasirku POS</title>
+    <title>Offline - Angkringan POS</title>
     <meta name="theme-color" content="#4f46e5" />
     <style>
       :root {
@@ -18,90 +18,135 @@
         display: grid;
         place-items: center;
         font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-        background:
-          radial-gradient(circle at top, rgba(79, 70, 229, 0.24), transparent 34%),
-          #020617;
-        color: #f8fafc;
+        background: #f8fafc;
+        color: #0f172a;
         padding: 24px;
       }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0b0f19;
+          color: #f1f5f9;
+        }
+        .card {
+          border-color: rgba(255, 255, 255, 0.08) !important;
+          background: #0f172a !important;
+        }
+        .desc {
+          color: rgba(226, 232, 240, 0.65) !important;
+        }
+        .hint {
+          color: rgba(226, 232, 240, 0.45) !important;
+        }
+      }
       .card {
-        width: min(100%, 420px);
-        border-radius: 28px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(15, 23, 42, 0.8);
-        backdrop-filter: blur(20px);
+        width: min(100%, 380px);
+        text-align: center;
+        border-radius: 24px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        background: #ffffff;
         padding: 28px;
-        box-shadow: 0 24px 80px rgba(2, 6, 23, 0.45);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
       }
       .brand {
         display: flex;
         align-items: center;
-        gap: 14px;
+        justify-content: center;
+        gap: 10px;
       }
       .brand img {
-        width: 56px;
-        height: 56px;
-        border-radius: 18px;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
         object-fit: cover;
       }
-      .status {
-        margin-top: 22px;
-        border-radius: 20px;
-        border: 1px solid rgba(248, 113, 113, 0.24);
-        background: rgba(239, 68, 68, 0.12);
-        padding: 16px;
+      .brand span {
+        font-size: 14px;
+        font-weight: 700;
       }
-      h1,
+      .icon {
+        margin: 20px auto 0;
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: rgba(245, 158, 11, 0.12);
+        color: #d97706;
+        font-size: 22px;
+      }
+      h1 {
+        margin: 16px 0 0;
+        font-size: 18px;
+      }
       p {
         margin: 0;
       }
-      .hint {
-        margin-top: 16px;
-        color: rgba(226, 232, 240, 0.9);
-        line-height: 1.65;
+      .desc {
+        margin-top: 6px;
+        color: rgba(15, 23, 42, 0.6);
+        line-height: 1.6;
         font-size: 14px;
       }
       .button {
-        margin-top: 24px;
+        margin-top: 22px;
         width: 100%;
-        height: 44px;
+        height: 46px;
         border: 0;
-        border-radius: 16px;
-        background: white;
-        color: #0f172a;
+        border-radius: 14px;
+        background: #4f46e5;
+        color: white;
         font: inherit;
         font-weight: 700;
+        cursor: pointer;
+      }
+      .button:active {
+        transform: scale(0.98);
+      }
+      .hint {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 12px;
+        color: rgba(15, 23, 42, 0.4);
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #f59e0b;
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
       }
     </style>
   </head>
   <body>
     <main class="card">
       <div class="brand">
-        <img src="/logo.png" alt="Kasirku POS logo" />
-        <div>
-          <h1 style="font-size: 20px">Kasirku POS</h1>
-          <p style="margin-top: 4px; color: rgba(226, 232, 240, 0.78)">
-            Mode offline
-          </p>
-        </div>
+        <img src="/logo.png" alt="Angkringan POS logo" />
+        <span>Angkringan POS</span>
       </div>
 
-      <section class="status">
-        <p style="font-weight: 700">Tidak ada koneksi internet</p>
-        <p class="hint">
-          Aplikasi berhasil dibuka dari cache PWA, tetapi data terbaru belum bisa
-          disinkronkan sekarang.
-        </p>
-      </section>
+      <div class="icon">&#128225;</div>
 
-      <div class="hint">
-        Sambungkan internet atau buka ulang aplikasi saat koneksi kembali
-        tersedia.
-      </div>
+      <h1>Tidak Ada Koneksi Internet</h1>
+      <p class="desc">
+        Aplikasi terbuka dari cache, tapi sinkronisasi data ke server belum
+        bisa dilakukan. Periksa Wi-Fi atau data seluler Anda.
+      </p>
 
       <button class="button" onclick="window.location.reload()">
         Coba Lagi
       </button>
+
+      <p class="hint">
+        <span class="dot"></span>
+        Menunggu koneksi kembali…
+      </p>
     </main>
   </body>
 </html>
