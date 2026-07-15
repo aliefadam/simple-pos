@@ -13,6 +13,12 @@ export function Topbar({ onOpenMobile }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const appEnv = (import.meta.env.APP_ENV || import.meta.env.MODE || "unknown")
+    .toUpperCase();
+  const supabaseProjectRef =
+    import.meta.env.VITE_SUPABASE_URL?.match(/https:\/\/([^.]+)\.supabase\.co/i)?.[1] ||
+    "unknown";
+  const isProductionEnv = appEnv === "PRODUCTION";
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -52,7 +58,15 @@ export function Topbar({ onOpenMobile }: TopbarProps) {
         <p className="text-sm font-semibold capitalize text-slate-700 dark:text-slate-200">
           {dateLabel}
         </p>
-        <p className="text-xs text-slate-400">{wibTimeLabel}</p>
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <p>{wibTimeLabel}</p>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold tracking-[0.08em] ${isProductionEnv ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"}`}
+            title={`Terhubung ke project Supabase: ${supabaseProjectRef}`}
+          >
+            {appEnv} • {supabaseProjectRef}
+          </span>
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-2">

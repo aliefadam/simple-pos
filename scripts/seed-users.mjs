@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 
@@ -27,8 +27,56 @@ function parseEnv(content) {
 }
 
 async function loadEnvFile() {
-  const content = await readFile(new URL("../.env", import.meta.url), "utf8");
+  const args = process.argv.slice(2);
+  const envFileIndex = args.findIndex((arg) => arg === "--env-file");
+  const modeIndex = args.findIndex((arg) => arg === "--mode");
+
+  if (envFileIndex !== -1 && args[envFileIndex + 1]) {
+    return loadSingleEnvFile(args[envFileIndex + 1]);
+  }
+
+  const baseEnv = await loadEnvFiles([".env", ".env.local"]);
+  const mode =
+    (modeIndex !== -1 && args[modeIndex + 1]) ||
+    process.env.APP_ENV ||
+    process.env.NODE_ENV ||
+    baseEnv.APP_ENV ||
+    "";
+
+  if (!mode || mode === "local") {
+    return baseEnv;
+  }
+
+  return loadEnvFiles([
+    ".env",
+    ".env.local",
+    `.env.${mode}`,
+    `.env.${mode}.local`,
+  ]);
+}
+
+async function loadSingleEnvFile(fileName) {
+  const content = await readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
   return parseEnv(content);
+}
+
+async function loadEnvFiles(fileNames) {
+  const env = {};
+
+  for (const fileName of fileNames) {
+    const fileUrl = new URL(`../${fileName}`, import.meta.url);
+
+    try {
+      await access(fileUrl);
+    } catch {
+      continue;
+    }
+
+    const content = await readFile(fileUrl, "utf8");
+    Object.assign(env, parseEnv(content));
+  }
+
+  return env;
 }
 
 function createCredentials(password) {
@@ -54,7 +102,8 @@ async function main() {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      "VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY belum diisi di file .env.",
+      "VITE_SUPABASE_URL atau VITE_SUPABASE_ANON_KEY belum diisi di file environment.\n" +
+        "Anda juga bisa memakai file environment lain, misalnya `node scripts/seed-users.mjs --mode production` atau `--env-file .env.production`.",
     );
   }
 
