@@ -15,8 +15,9 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { productService } from "../../services/productService";
 import { categoryService } from "../../services/categoryService";
+import { rawMaterialService } from "../../services/rawMaterialService";
 import { formatCurrency } from "../../utils/format";
-import type { Category, Product } from "../../types";
+import type { Category, Product, RawMaterial } from "../../types";
 
 const PAGE_SIZE = 8;
 
@@ -28,6 +29,7 @@ const emptyForm = {
   trackStock: true,
   image: "",
   active: true,
+  recipe: [] as { rawMaterialId: string; qty: string }[],
 };
 
 export default function Produk() {
@@ -36,6 +38,7 @@ export default function Produk() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -45,12 +48,14 @@ export default function Produk() {
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    const [allProducts, allCategories] = await Promise.all([
+    const [allProducts, allCategories, activeRawMaterials] = await Promise.all([
       productService.getAll(),
       categoryService.getAll(),
+      rawMaterialService.getActive(),
     ]);
     setProducts(allProducts);
     setCategories(allCategories);
+    setRawMaterials(activeRawMaterials);
   }
 
   useEffect(() => {
@@ -108,8 +113,33 @@ export default function Produk() {
       trackStock: product.trackStock,
       image: "",
       active: product.active,
+      recipe: (product.recipe ?? []).map((r) => ({
+        rawMaterialId: r.rawMaterialId,
+        qty: String(r.qty),
+      })),
     });
     setModalOpen(true);
+  }
+
+  function addRecipeRow() {
+    setForm((f) => ({
+      ...f,
+      recipe: [...f.recipe, { rawMaterialId: "", qty: "1" }],
+    }));
+  }
+
+  function updateRecipeRow(index: number, patch: Partial<{ rawMaterialId: string; qty: string }>) {
+    setForm((f) => ({
+      ...f,
+      recipe: f.recipe.map((r, i) => (i === index ? { ...r, ...patch } : r)),
+    }));
+  }
+
+  function removeRecipeRow(index: number) {
+    setForm((f) => ({
+      ...f,
+      recipe: f.recipe.filter((_, i) => i !== index),
+    }));
   }
 
   async function handleSubmit() {
@@ -117,6 +147,9 @@ export default function Produk() {
       showToast("error", "Lengkapi data produk terlebih dahulu");
       return;
     }
+    const recipe = form.recipe
+      .filter((r) => r.rawMaterialId && Number(r.qty) > 0)
+      .map((r) => ({ rawMaterialId: r.rawMaterialId, qty: Number(r.qty) }));
     const payload = {
       name: form.name,
       categoryId: form.categoryId,
@@ -125,6 +158,7 @@ export default function Produk() {
       trackStock: form.trackStock,
       image: "",
       active: form.active,
+      recipe,
     };
     if (editing) {
       await productService.update(editing.id, payload);
@@ -367,6 +401,58 @@ export default function Produk() {
             />
             Produk aktif dijual
           </label>
+
+          <div className="space-y-2 border-t border-dashed border-slate-200 pt-4 dark:border-slate-700">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Resep Bahan Baku</p>
+                <p className="text-xs text-slate-400">Opsional — bahan baku yang otomatis berkurang saat produk ini terjual.</p>
+              </div>
+              <Button variant="outline" size="sm" icon="fi fi-rr-add" onClick={addRecipeRow}>
+                Tambah Bahan
+              </Button>
+            </div>
+            {form.recipe.length === 0 ? (
+              <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-xs text-slate-400 dark:bg-slate-800/60">
+                Belum ada bahan baku ditambahkan.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {form.recipe.map((row, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <SelectDropdown
+                        searchable
+                        placeholder="Pilih bahan baku"
+                        searchPlaceholder="Cari bahan baku..."
+                        value={row.rawMaterialId}
+                        onChange={(rawMaterialId) => updateRecipeRow(index, { rawMaterialId })}
+                        options={rawMaterials.map((m) => ({
+                          value: m.id,
+                          label: `${m.name} (${m.unit})`,
+                        }))}
+                      />
+                    </div>
+                    <div className="w-20">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={row.qty}
+                        onChange={(e) => updateRecipeRow(index, { qty: e.target.value })}
+                        placeholder="1"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeRecipeRow(index)}
+                      className="flex h-[42px] w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                    >
+                      <i className="fi fi-rr-trash text-sm" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
     </div>

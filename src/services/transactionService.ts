@@ -3,7 +3,9 @@ import { DB_TABLES } from "../constants";
 import { storageService } from "./storageService";
 import { productService } from "./productService";
 import { stockService } from "./stockService";
-import { isSameDay, isSameMonth } from "../utils/format";
+import { rawMaterialStockService } from "./rawMaterialStockService";
+import { isSameMonth } from "../utils/format";
+import { isWithinCurrentBusinessDay } from "../utils/businessTime";
 import type { CartItem, PaymentMethod, Transaction, TransactionStatus, User } from "../types";
 
 function generateCode(seq: number): string {
@@ -23,8 +25,10 @@ export const transactionService = {
   },
 
   async getToday(): Promise<Transaction[]> {
-    const now = new Date().toISOString();
-    return (await this.getAll()).filter((t) => isSameDay(t.date, now) && t.status === "selesai");
+    const now = new Date();
+    return (await this.getAll()).filter(
+      (t) => isWithinCurrentBusinessDay(t.date, now) && t.status === "selesai",
+    );
   },
 
   async getThisMonth(): Promise<Transaction[]> {
@@ -80,6 +84,17 @@ export const transactionService = {
             cashier,
           );
         }
+        if (product?.recipe?.length) {
+          for (const ingredient of product.recipe) {
+            await rawMaterialStockService.record(
+              ingredient.rawMaterialId,
+              "keluar-transaksi",
+              -(ingredient.qty * item.qty),
+              `Terpakai di transaksi ${transaction.code} (${product.name})`,
+              cashier,
+            );
+          }
+        }
       }
     }
     return transaction;
@@ -107,6 +122,17 @@ export const transactionService = {
             `Pengembalian stok dari pembatalan transaksi ${transaction.code}`,
             actor,
           );
+        }
+        if (product?.recipe?.length) {
+          for (const ingredient of product.recipe) {
+            await rawMaterialStockService.record(
+              ingredient.rawMaterialId,
+              "penyesuaian",
+              ingredient.qty * item.qty,
+              `Pengembalian stok dari pembatalan transaksi ${transaction.code} (${product.name})`,
+              actor,
+            );
+          }
         }
       }
     }

@@ -5,6 +5,8 @@ import type {
   Category,
   Expense,
   Product,
+  RawMaterial,
+  RawMaterialMovement,
   Shift,
   StockMovement,
   Transaction,
@@ -20,6 +22,8 @@ type TableValueMap = {
   [DB_TABLES.EXPENSES]: Expense;
   [DB_TABLES.SETTINGS]: AppSettings;
   [DB_TABLES.SHIFTS]: Shift;
+  [DB_TABLES.RAW_MATERIALS]: RawMaterial;
+  [DB_TABLES.RAW_MATERIAL_MOVEMENTS]: RawMaterialMovement;
 };
 
 type TableName = keyof TableValueMap;
@@ -75,7 +79,7 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
   },
   [DB_TABLES.PRODUCTS]: {
     select:
-      "id,name,category_id,price,stock,track_stock,image,active,created_at",
+      "id,name,category_id,price,stock,track_stock,image,active,recipe,created_at",
     fromRow: (row): Product => ({
       id: String(row.id),
       name: String(row.name ?? ""),
@@ -85,6 +89,7 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
       trackStock: Boolean(row.track_stock),
       image: String(row.image ?? ""),
       active: Boolean(row.active),
+      recipe: Array.isArray(row.recipe) ? (row.recipe as Product["recipe"]) : [],
       createdAt: String(row.created_at ?? new Date().toISOString()),
     }),
     toRow: (item: Product) => ({
@@ -96,6 +101,7 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
       track_stock: item.trackStock,
       image: item.image,
       active: item.active,
+      recipe: item.recipe ?? [],
       created_at: item.createdAt,
     }),
   },
@@ -263,6 +269,54 @@ const tableConfigs: Record<TableName, TableConfig<any>> = {
       difference: item.difference ?? null,
       notes: item.notes ?? null,
       status: item.status,
+    }),
+  },
+  [DB_TABLES.RAW_MATERIALS]: {
+    select: "id,name,unit,stock,active,created_at",
+    fromRow: (row): RawMaterial => ({
+      id: String(row.id),
+      name: String(row.name ?? ""),
+      unit: String(row.unit ?? "pcs"),
+      stock: Number(row.stock ?? 0),
+      active: Boolean(row.active),
+      createdAt: String(row.created_at ?? new Date().toISOString()),
+    }),
+    toRow: (item: RawMaterial) => ({
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      stock: item.stock,
+      active: item.active,
+      created_at: item.createdAt,
+    }),
+  },
+  [DB_TABLES.RAW_MATERIAL_MOVEMENTS]: {
+    select:
+      "id,raw_material_id,raw_material_name,type,qty,reason,date,user_id,user_name",
+    fromRow: (row): RawMaterialMovement => ({
+      id: String(row.id),
+      rawMaterialId: String(row.raw_material_id ?? ""),
+      rawMaterialName: String(row.raw_material_name ?? ""),
+      type:
+        row.type === "masuk" || row.type === "keluar-transaksi"
+          ? row.type
+          : "penyesuaian",
+      qty: Number(row.qty ?? 0),
+      reason: String(row.reason ?? ""),
+      date: String(row.date ?? new Date().toISOString()),
+      userId: String(row.user_id ?? ""),
+      userName: String(row.user_name ?? ""),
+    }),
+    toRow: (item: RawMaterialMovement) => ({
+      id: item.id,
+      raw_material_id: item.rawMaterialId,
+      raw_material_name: item.rawMaterialName,
+      type: item.type,
+      qty: item.qty,
+      reason: item.reason,
+      date: item.date,
+      user_id: item.userId,
+      user_name: item.userName,
     }),
   },
   [DB_TABLES.SETTINGS]: {

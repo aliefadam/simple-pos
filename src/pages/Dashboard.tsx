@@ -26,10 +26,20 @@ import {
   type DatabaseStatus,
 } from "../services/databaseStatusService";
 import { productService } from "../services/productService";
+import { rawMaterialService } from "../services/rawMaterialService";
 import { transactionService } from "../services/transactionService";
 import { formatCurrency, formatNumber, timeAgo } from "../utils/format";
+import { formatBusinessDayRange } from "../utils/businessTime";
 import { useAuth } from "../context/AuthContext";
-import type { Product, Transaction } from "../types";
+import type { Transaction } from "../types";
+
+interface LowStockItem {
+  id: string;
+  name: string;
+  stock: number;
+  unit: string;
+  kind: "product" | "raw_material";
+}
 
 const statConfig = [
   {
@@ -81,6 +91,7 @@ const TONE_CLASSES: Record<string, string> = {
 
 export default function Dashboard() {
   const { user, isOwner } = useAuth();
+  const businessDayRangeLabel = formatBusinessDayRange();
   const visibleStats = isOwner
     ? statConfig
     : statConfig.filter((item) => item.key !== "pengeluaranHariIni");
@@ -88,7 +99,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [weekly, setWeekly] = useState<DailyPoint[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [lowStock, setLowStock] = useState<Product[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [recent, setRecent] = useState<Transaction[]>([]);
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(
     null,
@@ -100,8 +111,10 @@ export default function Dashboard() {
       dashboardStats,
       weeklySales,
       top,
-      low,
-      out,
+      lowProducts,
+      outProducts,
+      lowRawMaterials,
+      outRawMaterials,
       recentActivity,
       dbStatus,
     ] = await Promise.all([
@@ -110,6 +123,8 @@ export default function Dashboard() {
       reportService.getTopProducts(undefined, 5),
       productService.getLowStock(),
       productService.getOutOfStock(),
+      rawMaterialService.getLowStock(),
+      rawMaterialService.getOutOfStock(),
       isOwner
         ? reportService.getRecentActivity(6)
         : transactionService.getByCashier(user?.id ?? ""),
@@ -119,7 +134,38 @@ export default function Dashboard() {
     setStats(dashboardStats);
     setWeekly(weeklySales);
     setTopProducts(top);
-    setLowStock([...low, ...out].slice(0, 5));
+    setLowStock(
+      [
+        ...outProducts.map((p) => ({
+          id: p.id,
+          name: p.name,
+          stock: p.stock,
+          unit: "pcs",
+          kind: "product" as const,
+        })),
+        ...outRawMaterials.map((m) => ({
+          id: m.id,
+          name: m.name,
+          stock: m.stock,
+          unit: m.unit,
+          kind: "raw_material" as const,
+        })),
+        ...lowProducts.map((p) => ({
+          id: p.id,
+          name: p.name,
+          stock: p.stock,
+          unit: "pcs",
+          kind: "product" as const,
+        })),
+        ...lowRawMaterials.map((m) => ({
+          id: m.id,
+          name: m.name,
+          stock: m.stock,
+          unit: m.unit,
+          kind: "raw_material" as const,
+        })),
+      ].slice(0, 5),
+    );
     setRecent(recentActivity.slice(0, 6));
     setDatabaseStatus(dbStatus);
   }
@@ -159,7 +205,7 @@ export default function Dashboard() {
             Halo, {user?.name?.split(" ")[0]}
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Berikut ringkasan performa usaha Anda hari ini.
+            Berikut ringkasan performa usaha Anda untuk periode operasional {businessDayRangeLabel}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -402,23 +448,28 @@ export default function Dashboard() {
             ) : lowStock.length === 0 ? (
               <EmptyState icon="fi fi-rr-box-check" title="Semua stok aman" />
             ) : (
-              lowStock.map((product) => (
+              lowStock.map((item) => (
                 <div
-                  key={product.id}
+                  key={`${item.kind}-${item.id}`}
                   className="flex items-center justify-between gap-2"
                 >
                   <div className="flex items-center gap-2.5">
                     <ProductAvatar
-                      name={product.name}
+                      name={item.name}
                       className="h-9 w-9 rounded-lg"
                       textClassName="text-[11px]"
                     />
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      {product.name}
-                    </p>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        {item.name}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {item.kind === "raw_material" ? "Bahan Baku" : "Produk"}
+                      </p>
+                    </div>
                   </div>
-                  <Badge tone={product.stock === 0 ? "red" : "amber"}>
-                    {product.stock === 0 ? "Habis" : `${product.stock} pcs`}
+                  <Badge tone={item.stock === 0 ? "red" : "amber"}>
+                    {item.stock === 0 ? "Habis" : `${item.stock} ${item.unit}`}
                   </Badge>
                 </div>
               ))

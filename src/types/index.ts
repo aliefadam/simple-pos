@@ -22,6 +22,11 @@ export interface Category {
   createdAt: string;
 }
 
+export interface RecipeItem {
+  rawMaterialId: string;
+  qty: number; // jumlah bahan baku terpakai per 1 unit produk terjual
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -32,6 +37,7 @@ export interface Product {
   image: string;
   active: boolean;
   createdAt: string;
+  recipe?: RecipeItem[];
 }
 
 export interface CartItem {
@@ -68,6 +74,27 @@ export interface StockMovement {
   id: string;
   productId: string;
   productName: string;
+  type: StockMovementType;
+  qty: number; // signed: positive = masuk, negative = keluar
+  reason: string;
+  date: string;
+  userId: string;
+  userName: string;
+}
+
+export interface RawMaterial {
+  id: string;
+  name: string;
+  unit: string;
+  stock: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface RawMaterialMovement {
+  id: string;
+  rawMaterialId: string;
+  rawMaterialName: string;
   type: StockMovementType;
   qty: number; // signed: positive = masuk, negative = keluar
   reason: string;

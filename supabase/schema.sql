@@ -31,6 +31,7 @@ create table if not exists public.products (
   track_stock boolean not null default true,
   image text not null default '',
   active boolean not null default true,
+  recipe jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -113,6 +114,30 @@ create table if not exists public.shifts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.raw_materials (
+  id text primary key,
+  name text not null default '',
+  unit text not null default 'pcs',
+  stock integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.raw_material_movements (
+  id text primary key,
+  raw_material_id text not null default '',
+  raw_material_name text not null default '',
+  type text not null default 'masuk',
+  qty integer not null default 0,
+  reason text not null default '',
+  date timestamptz not null default now(),
+  user_id text not null default '',
+  user_name text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.users add column if not exists name text not null default '';
 alter table public.users add column if not exists username text not null default '';
 alter table public.users add column if not exists password text not null default '';
@@ -132,6 +157,7 @@ alter table public.products add column if not exists stock integer not null defa
 alter table public.products add column if not exists track_stock boolean not null default true;
 alter table public.products add column if not exists image text not null default '';
 alter table public.products add column if not exists active boolean not null default true;
+alter table public.products add column if not exists recipe jsonb not null default '[]'::jsonb;
 
 alter table public.transactions add column if not exists code text not null default '';
 alter table public.transactions add column if not exists date timestamptz not null default now();
@@ -187,6 +213,20 @@ alter table public.shifts add column if not exists notes text;
 alter table public.shifts add column if not exists status text not null default 'buka';
 
 create unique index if not exists shifts_one_open_idx on public.shifts (status) where status = 'buka';
+
+alter table public.raw_materials add column if not exists name text not null default '';
+alter table public.raw_materials add column if not exists unit text not null default 'pcs';
+alter table public.raw_materials add column if not exists stock integer not null default 0;
+alter table public.raw_materials add column if not exists active boolean not null default true;
+
+alter table public.raw_material_movements add column if not exists raw_material_id text not null default '';
+alter table public.raw_material_movements add column if not exists raw_material_name text not null default '';
+alter table public.raw_material_movements add column if not exists type text not null default 'masuk';
+alter table public.raw_material_movements add column if not exists qty integer not null default 0;
+alter table public.raw_material_movements add column if not exists reason text not null default '';
+alter table public.raw_material_movements add column if not exists date timestamptz not null default now();
+alter table public.raw_material_movements add column if not exists user_id text not null default '';
+alter table public.raw_material_movements add column if not exists user_name text not null default '';
 
 do $$
 begin
@@ -370,6 +410,10 @@ drop trigger if exists app_settings_set_updated_at on public.app_settings;
 create trigger app_settings_set_updated_at before update on public.app_settings for each row execute function public.set_updated_at();
 drop trigger if exists shifts_set_updated_at on public.shifts;
 create trigger shifts_set_updated_at before update on public.shifts for each row execute function public.set_updated_at();
+drop trigger if exists raw_materials_set_updated_at on public.raw_materials;
+create trigger raw_materials_set_updated_at before update on public.raw_materials for each row execute function public.set_updated_at();
+drop trigger if exists raw_material_movements_set_updated_at on public.raw_material_movements;
+create trigger raw_material_movements_set_updated_at before update on public.raw_material_movements for each row execute function public.set_updated_at();
 
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to anon, authenticated;
@@ -383,6 +427,8 @@ alter table public.stock_movements enable row level security;
 alter table public.expenses enable row level security;
 alter table public.app_settings enable row level security;
 alter table public.shifts enable row level security;
+alter table public.raw_materials enable row level security;
+alter table public.raw_material_movements enable row level security;
 
 drop policy if exists "public access users" on public.users;
 create policy "public access users" on public.users for all using (true) with check (true);
@@ -400,6 +446,10 @@ drop policy if exists "public access app_settings" on public.app_settings;
 create policy "public access app_settings" on public.app_settings for all using (true) with check (true);
 drop policy if exists "public access shifts" on public.shifts;
 create policy "public access shifts" on public.shifts for all using (true) with check (true);
+drop policy if exists "public access raw_materials" on public.raw_materials;
+create policy "public access raw_materials" on public.raw_materials for all using (true) with check (true);
+drop policy if exists "public access raw_material_movements" on public.raw_material_movements;
+create policy "public access raw_material_movements" on public.raw_material_movements for all using (true) with check (true);
 
 insert into storage.buckets (id, name, public)
 values ('expense-receipts', 'expense-receipts', true)

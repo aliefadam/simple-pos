@@ -16,7 +16,9 @@ import RiwayatTransaksi from "./pages/kasir/RiwayatTransaksi";
 import RiwayatShift from "./pages/kasir/RiwayatShift";
 import Kategori from "./pages/master/Kategori";
 import Produk from "./pages/master/Produk";
-import Stok from "./pages/master/Stok";
+import StokProduk from "./pages/master/StokProduk";
+import BahanBaku from "./pages/master/BahanBaku";
+import StokBahanBaku from "./pages/master/StokBahanBaku";
 import Pengeluaran from "./pages/keuangan/Pengeluaran";
 import Laporan from "./pages/keuangan/Laporan";
 import UserManagement from "./pages/pengaturan/User";
@@ -84,14 +86,29 @@ function AppRouter() {
             }
           />
           <Route
-            path="/master/stok"
+            path="/master/bahan-baku"
             element={
               <ProtectedRoute roles={["owner"]}>
-                <Stok />
+                <BahanBaku />
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/master/stok/produk"
+            element={
+              <ProtectedRoute roles={["owner"]}>
+                <StokProduk />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/master/stok/bahan-baku"
+            element={
+              <ProtectedRoute roles={["owner"]}>
+                <StokBahanBaku />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/keuangan/pengeluaran"
             element={

@@ -7,6 +7,8 @@ export const DB_TABLES = {
   EXPENSES: "expenses",
   SETTINGS: "app_settings",
   SHIFTS: "shifts",
+  RAW_MATERIALS: "raw_materials",
+  RAW_MATERIAL_MOVEMENTS: "raw_material_movements",
 } as const;
 
 export const SETTINGS_ROW_ID = "default";
@@ -32,6 +34,21 @@ export const PAYMENT_METHODS: { value: string; label: string; icon: string }[] =
 ];
 
 export const LOW_STOCK_THRESHOLD = 10;
+
+export const RAW_MATERIAL_UNITS = [
+  "pcs",
+  "lembar",
+  "pack",
+  "box",
+  "dus",
+  "karton",
+  "roll",
+  "botol",
+  "kg",
+  "gram",
+  "liter",
+  "ml",
+];
 
 export const CATEGORY_ICONS = [
   "fi-rr-bowl-rice",

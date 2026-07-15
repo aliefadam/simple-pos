@@ -1,7 +1,8 @@
 import { v4 as uuid } from "uuid";
 import { DB_TABLES, SUPABASE_BUCKETS } from "../constants";
 import { storageService } from "./storageService";
-import { isSameDay, isSameMonth } from "../utils/format";
+import { isSameMonth } from "../utils/format";
+import { isWithinCurrentBusinessDay } from "../utils/businessTime";
 import type { Expense } from "../types";
 import { requireSupabase } from "../lib/supabase";
 
@@ -17,8 +18,10 @@ export const expenseService = {
   },
 
   async getToday(): Promise<Expense[]> {
-    const now = new Date().toISOString();
-    return (await this.getAll()).filter((e) => isSameDay(e.date, now));
+    const now = new Date();
+    return (await this.getAll()).filter((e) =>
+      isWithinCurrentBusinessDay(e.date, now),
+    );
   },
 
   async getThisMonth(): Promise<Expense[]> {

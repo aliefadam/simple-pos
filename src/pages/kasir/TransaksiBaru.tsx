@@ -337,7 +337,12 @@ export default function TransaksiBaru() {
               <i className="fi fi-rr-cash-register" />
               Shift aktif sejak {formatDate(shift.openedAt, true)}
             </div>
-            <Button variant="outline" size="sm" onClick={openCloseShiftModal}>
+            <Button
+              variant="danger"
+              size="sm"
+              icon="fi fi-rr-power"
+              onClick={openCloseShiftModal}
+            >
               Tutup Shift
             </Button>
             <button

@@ -14,7 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import { useToast } from "../../context/ToastContext";
 import { transactionService } from "../../services/transactionService";
-import { formatCurrency, formatDate } from "../../utils/format";
+import { formatCurrency, formatDate, formatDateInput } from "../../utils/format";
 import { PAYMENT_METHODS } from "../../constants";
 import type { Transaction } from "../../types";
 
@@ -69,7 +69,7 @@ export default function RiwayatTransaksi() {
       const matchSearch =
         t.code.toLowerCase().includes(search.toLowerCase()) ||
         t.cashierName.toLowerCase().includes(search.toLowerCase());
-      const matchDate = !dateFilter || t.date.slice(0, 10) === dateFilter;
+      const matchDate = !dateFilter || formatDateInput(t.date) === dateFilter;
       const matchStatus = statusFilter === "all" || t.status === statusFilter;
       return matchSearch && matchDate && matchStatus;
     });

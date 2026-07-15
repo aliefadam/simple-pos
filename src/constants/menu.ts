@@ -5,7 +5,7 @@ export interface MenuItem {
   to?: string;
   icon: string;
   roles?: Role[];
-  children?: { label: string; to: string; icon: string; roles?: Role[] }[];
+  children?: MenuItem[];
 }
 
 export const MENU: MenuItem[] = [
@@ -50,9 +50,28 @@ export const MENU: MenuItem[] = [
         roles: ["owner"],
       },
       {
-        label: "Stok",
-        to: "/master/stok",
-        icon: "fi fi-rr-boxes",
+        label: "Bahan Baku",
+        to: "/master/bahan-baku",
+        icon: "fi fi-rr-package",
+        roles: ["owner"],
+      },
+    ],
+  },
+  {
+    label: "Stok",
+    icon: "fi fi-rr-boxes",
+    roles: ["owner"],
+    children: [
+      {
+        label: "Stok Produk",
+        to: "/master/stok/produk",
+        icon: "fi fi-rr-box-open",
+        roles: ["owner"],
+      },
+      {
+        label: "Stok Bahan Baku",
+        to: "/master/stok/bahan-baku",
+        icon: "fi fi-rr-package",
         roles: ["owner"],
       },
     ],

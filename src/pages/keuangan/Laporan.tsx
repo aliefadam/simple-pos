@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Card, CardBody, CardHeader } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -11,26 +19,39 @@ import { useToast } from "../../context/ToastContext";
 import { reportService, type TopProduct } from "../../services/reportService";
 import { transactionService } from "../../services/transactionService";
 import { formatCurrency, formatNumber } from "../../utils/format";
+import { formatBusinessDayRange } from "../../utils/businessTime";
 
 export default function Laporan() {
   const { showToast } = useToast();
+  const businessDayRangeLabel = formatBusinessDayRange();
   const [loading, setLoading] = useState(true);
-  const [monthly, setMonthly] = useState<{ label: string; omset: number }[]>([]);
+  const [monthly, setMonthly] = useState<{ label: string; omset: number }[]>(
+    [],
+  );
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [leastSold, setLeastSold] = useState<TopProduct[]>([]);
-  const [profit, setProfit] = useState({ pendapatan: 0, pengeluaran: 0, laba: 0 });
-  const [todayStats, setTodayStats] = useState({ omset: 0, transaksi: 0, produkTerjual: 0 });
+  const [profit, setProfit] = useState({
+    pendapatan: 0,
+    pengeluaran: 0,
+    laba: 0,
+  });
+  const [todayStats, setTodayStats] = useState({
+    omset: 0,
+    transaksi: 0,
+    produkTerjual: 0,
+  });
 
   useEffect(() => {
     let active = true;
     const t = setTimeout(async () => {
-      const [monthlySales, top, least, profitSummary, todayTx] = await Promise.all([
-        reportService.getMonthlySales(),
-        reportService.getTopProducts(undefined, 6),
-        reportService.getLeastSoldProducts(6),
-        reportService.getProfitSimple(),
-        transactionService.getToday(),
-      ]);
+      const [monthlySales, top, least, profitSummary, todayTx] =
+        await Promise.all([
+          reportService.getMonthlySales(),
+          reportService.getTopProducts(undefined, 6),
+          reportService.getLeastSoldProducts(6),
+          reportService.getProfitSimple(),
+          transactionService.getToday(),
+        ]);
       if (!active) return;
       setMonthly(monthlySales);
       setTopProducts(top);
@@ -39,7 +60,10 @@ export default function Laporan() {
       setTodayStats({
         omset: todayTx.reduce((s, t) => s + t.total, 0),
         transaksi: todayTx.length,
-        produkTerjual: todayTx.reduce((s, t) => s + t.items.reduce((si, it) => si + it.qty, 0), 0),
+        produkTerjual: todayTx.reduce(
+          (s, t) => s + t.items.reduce((si, it) => si + it.qty, 0),
+          0,
+        ),
       });
       setLoading(false);
     }, 400);
@@ -54,9 +78,10 @@ export default function Laporan() {
 
     const summarySheet = XLSX.utils.json_to_sheet([
       {
-        "Omset Hari Ini": todayStats.omset,
-        "Transaksi Hari Ini": todayStats.transaksi,
-        "Produk Terjual Hari Ini": todayStats.produkTerjual,
+        "Omset Hari Operasional": todayStats.omset,
+        "Transaksi Hari Operasional": todayStats.transaksi,
+        "Produk Terjual Hari Operasional": todayStats.produkTerjual,
+        Periode: businessDayRangeLabel,
         "Pendapatan Bulan Ini": profit.pendapatan,
         "Pengeluaran Bulan Ini": profit.pengeluaran,
         "Laba Sederhana": profit.laba,
@@ -87,7 +112,11 @@ export default function Laporan() {
     XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan");
     XLSX.utils.book_append_sheet(workbook, monthlySheet, "Penjualan Bulanan");
     XLSX.utils.book_append_sheet(workbook, topProductsSheet, "Produk Terlaris");
-    XLSX.utils.book_append_sheet(workbook, leastSoldSheet, "Produk Kurang Laku");
+    XLSX.utils.book_append_sheet(
+      workbook,
+      leastSoldSheet,
+      "Produk Kurang Laku",
+    );
 
     XLSX.writeFile(workbook, "laporan-keuangan.xlsx");
     showToast("success", "Laporan diekspor", "File Excel berhasil diunduh");
@@ -98,40 +127,81 @@ export default function Laporan() {
       <Breadcrumb items={[{ label: "Keuangan" }, { label: "Laporan" }]} />
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Laporan Usaha</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ringkasan penjualan, produk, dan laba sederhana.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Laporan Usaha
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Ringkasan penjualan, produk, dan laba sederhana untuk periode
+            operasional {` ${businessDayRangeLabel}`}.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" icon="fi fi-rr-file-spreadsheet" onClick={exportExcel}>Export Excel</Button>
+          <Button
+            variant="outline"
+            icon="fi fi-rr-file-spreadsheet"
+            onClick={exportExcel}
+          >
+            Export Excel
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">
-          <p className="text-xs font-medium text-slate-400">Omset Hari Ini</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-28" /> : <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(todayStats.omset)}</p>}
-          <p className="mt-1 text-xs text-slate-400">{todayStats.transaksi} transaksi · {todayStats.produkTerjual} produk terjual</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs font-medium text-slate-400">Pendapatan Bulan Ini</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-28" /> : <p className="mt-1 text-2xl font-bold text-emerald-600">{formatCurrency(profit.pendapatan)}</p>}
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs font-medium text-slate-400">Laba Sederhana (Penjualan - Pengeluaran)</p>
+          <p className="text-xs font-medium text-slate-400">
+            Omset Hari Operasional
+          </p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
           ) : (
-            <p className={`mt-1 text-2xl font-bold ${profit.laba >= 0 ? "text-indigo-600" : "text-red-500"}`}>
+            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+              {formatCurrency(todayStats.omset)}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-slate-400">
+            {todayStats.transaksi} transaksi · {todayStats.produkTerjual} produk
+            terjual
+          </p>
+          <p className="mt-1 text-[11px] text-slate-400">
+            Periode: {businessDayRangeLabel}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs font-medium text-slate-400">
+            Pendapatan Bulan Ini
+          </p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-28" />
+          ) : (
+            <p className="mt-1 text-2xl font-bold text-emerald-600">
+              {formatCurrency(profit.pendapatan)}
+            </p>
+          )}
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs font-medium text-slate-400">
+            Laba Sederhana (Penjualan - Pengeluaran)
+          </p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-28" />
+          ) : (
+            <p
+              className={`mt-1 text-2xl font-bold ${profit.laba >= 0 ? "text-indigo-600" : "text-red-500"}`}
+            >
               {formatCurrency(profit.laba)}
             </p>
           )}
-          <p className="mt-1 text-xs text-slate-400">Pengeluaran: {formatCurrency(profit.pengeluaran)}</p>
+          <p className="mt-1 text-xs text-slate-400">
+            Pengeluaran: {formatCurrency(profit.pengeluaran)}
+          </p>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Penjualan Bulanan (6 Bulan Terakhir)</h3>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+            Penjualan Bulanan (6 Bulan Terakhir)
+          </h3>
         </CardHeader>
         <CardBody>
           {loading ? (
@@ -139,10 +209,34 @@ export default function Laporan() {
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={monthly} margin={{ left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => [formatCurrency(Number(value)), "Omset"]} contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#e2e8f0"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 12, fill: "#94a3b8" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#94a3b8" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(value) => [
+                    formatCurrency(Number(value)),
+                    "Omset",
+                  ]}
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid #e2e8f0",
+                    fontSize: 12,
+                  }}
+                />
                 <Bar dataKey="omset" fill="#6366f1" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -153,24 +247,35 @@ export default function Laporan() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Produk Terlaris</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+              Produk Terlaris
+            </h3>
             <Badge tone="green">Top {topProducts.length}</Badge>
           </CardHeader>
           <CardBody className="space-y-3">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))
             ) : topProducts.length === 0 ? (
               <EmptyState icon="fi fi-rr-chart-pie" title="Belum ada data" />
             ) : (
               topProducts.map((p, idx) => (
-                <div key={p.productId} className="flex items-center justify-between gap-3">
+                <div
+                  key={p.productId}
+                  className="flex items-center justify-between gap-3"
+                >
                   <div className="flex items-center gap-3">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-600 dark:bg-emerald-500/10">
                       {idx + 1}
                     </span>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                      {p.name}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400">{formatNumber(p.qty)} pcs</p>
+                  <p className="text-xs text-slate-400">
+                    {formatNumber(p.qty)} pcs
+                  </p>
                 </div>
               ))
             )}
@@ -179,19 +284,30 @@ export default function Laporan() {
 
         <Card>
           <CardHeader>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Produk Kurang Laku</h3>
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+              Produk Kurang Laku
+            </h3>
             <Badge tone="amber">Perhatian</Badge>
           </CardHeader>
           <CardBody className="space-y-3">
             {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+              Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))
             ) : leastSold.length === 0 ? (
               <EmptyState icon="fi fi-rr-chart-pie" title="Belum ada data" />
             ) : (
               leastSold.map((p) => (
-                <div key={p.productId} className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.name}</p>
-                  <p className="text-xs text-slate-400">{formatNumber(p.qty)} pcs terjual</p>
+                <div
+                  key={p.productId}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {p.name}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {formatNumber(p.qty)} pcs terjual
+                  </p>
                 </div>
               ))
             )}
