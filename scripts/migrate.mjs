@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 
@@ -23,8 +23,56 @@ function parseEnv(content) {
 }
 
 async function loadEnvFile() {
-  const content = await readFile(new URL("../.env", import.meta.url), "utf8");
+  const args = process.argv.slice(2);
+  const envFileIndex = args.findIndex((arg) => arg === "--env-file");
+  const modeIndex = args.findIndex((arg) => arg === "--mode");
+
+  if (envFileIndex !== -1 && args[envFileIndex + 1]) {
+    return loadSingleEnvFile(args[envFileIndex + 1]);
+  }
+
+  const baseEnv = await loadEnvFiles([".env", ".env.local"]);
+  const mode =
+    (modeIndex !== -1 && args[modeIndex + 1]) ||
+    process.env.APP_ENV ||
+    process.env.NODE_ENV ||
+    baseEnv.APP_ENV ||
+    "";
+
+  if (!mode || mode === "local") {
+    return baseEnv;
+  }
+
+  return loadEnvFiles([
+    ".env",
+    ".env.local",
+    `.env.${mode}`,
+    `.env.${mode}.local`,
+  ]);
+}
+
+async function loadSingleEnvFile(fileName) {
+  const content = await readFile(new URL(`../${fileName}`, import.meta.url), "utf8");
   return parseEnv(content);
+}
+
+async function loadEnvFiles(fileNames) {
+  const env = {};
+
+  for (const fileName of fileNames) {
+    const fileUrl = new URL(`../${fileName}`, import.meta.url);
+
+    try {
+      await access(fileUrl);
+    } catch {
+      continue;
+    }
+
+    const content = await readFile(fileUrl, "utf8");
+    Object.assign(env, parseEnv(content));
+  }
+
+  return env;
 }
 
 async function main() {
@@ -34,6 +82,7 @@ async function main() {
   if (!connectionString) {
     throw new Error(
       "SUPABASE_DB_URL belum diisi di file .env.\n" +
+        "Anda juga bisa memakai file environment lain, misalnya `node scripts/migrate.mjs --mode production` atau `--env-file .env.production`.\n" +
         "Ambil dari Supabase Dashboard > Project Settings > Database > Connection string (URI, mode: Session pooler).\n" +
         'Contoh: SUPABASE_DB_URL="postgresql://postgres.xxxx:PASSWORD@aws-0-xx.pooler.supabase.com:5432/postgres"',
     );
