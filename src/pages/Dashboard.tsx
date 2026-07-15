@@ -13,6 +13,7 @@ import { Card, CardBody, CardHeader } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Skeleton } from "../components/ui/Skeleton";
 import { EmptyState } from "../components/ui/EmptyState";
+import { RefreshButton } from "../components/ui/RefreshButton";
 import { ProductAvatar } from "../components/ProductAvatar";
 import {
   reportService,
@@ -92,47 +93,63 @@ export default function Dashboard() {
   const [databaseStatus, setDatabaseStatus] = useState<DatabaseStatus | null>(
     null,
   );
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadDashboard() {
+    const [
+      dashboardStats,
+      weeklySales,
+      top,
+      low,
+      out,
+      recentActivity,
+      dbStatus,
+    ] = await Promise.all([
+      reportService.getDashboardStats({ includeExpenses: isOwner }),
+      reportService.getWeeklySales(),
+      reportService.getTopProducts(undefined, 5),
+      productService.getLowStock(),
+      productService.getOutOfStock(),
+      isOwner
+        ? reportService.getRecentActivity(6)
+        : transactionService.getByCashier(user?.id ?? ""),
+      isOwner ? databaseStatusService.check() : Promise.resolve(null),
+    ]);
+
+    setStats(dashboardStats);
+    setWeekly(weeklySales);
+    setTopProducts(top);
+    setLowStock([...low, ...out].slice(0, 5));
+    setRecent(recentActivity.slice(0, 6));
+    setDatabaseStatus(dbStatus);
+  }
 
   useEffect(() => {
     let active = true;
 
     const timer = setTimeout(async () => {
-      const [
-        dashboardStats,
-        weeklySales,
-        top,
-        low,
-        out,
-        recentActivity,
-        dbStatus,
-      ] = await Promise.all([
-        reportService.getDashboardStats({ includeExpenses: isOwner }),
-        reportService.getWeeklySales(),
-        reportService.getTopProducts(undefined, 5),
-        productService.getLowStock(),
-        productService.getOutOfStock(),
-        isOwner
-          ? reportService.getRecentActivity(6)
-          : transactionService.getByCashier(user?.id ?? ""),
-        isOwner ? databaseStatusService.check() : Promise.resolve(null),
-      ]);
-
       if (!active) return;
-
-      setStats(dashboardStats);
-      setWeekly(weeklySales);
-      setTopProducts(top);
-      setLowStock([...low, ...out].slice(0, 5));
-      setRecent(recentActivity.slice(0, 6));
-      setDatabaseStatus(dbStatus);
-      setLoading(false);
+      await loadDashboard();
+      if (active) setLoading(false);
     }, 400);
 
     return () => {
       active = false;
       clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, user?.id]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setLoading(true);
+    try {
+      await loadDashboard();
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -145,13 +162,16 @@ export default function Dashboard() {
             Berikut ringkasan performa usaha Anda hari ini.
           </p>
         </div>
-        <Link
-          to="/kasir/transaksi-baru"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-all duration-200 hover:bg-indigo-700 active:scale-95"
-        >
-          <i className="fi fi-rr-add text-sm" />
-          Transaksi Baru
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <RefreshButton loading={refreshing} onClick={handleRefresh} />
+          <Link
+            to="/kasir/transaksi-baru"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-600/20 transition-all duration-200 hover:bg-indigo-700 active:scale-95"
+          >
+            <i className="fi fi-rr-add text-sm" />
+            Transaksi Baru
+          </Link>
+        </div>
       </div>
 
       <div

@@ -3,7 +3,8 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
-import { Input, Select, Textarea } from "../../components/ui/Field";
+import { Input, Textarea } from "../../components/ui/Field";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
@@ -330,22 +331,21 @@ export default function Stok() {
         }
       >
         <div className="space-y-4">
-          <Select
+          <SelectDropdown
             label="Produk"
             required
+            searchable
+            placeholder="Pilih produk"
+            searchPlaceholder="Cari produk..."
             value={form.productId}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, productId: e.target.value }))
-            }
-          >
-            {products
+            onChange={(productId) => setForm((f) => ({ ...f, productId }))}
+            options={products
               .filter((p) => p.trackStock)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} (stok: {p.stock})
-                </option>
-              ))}
-          </Select>
+              .map((p) => ({
+                value: p.id,
+                label: `${p.name} (stok: ${p.stock})`,
+              }))}
+          />
           <Input
             label="Jumlah (pcs)"
             type="number"
@@ -355,19 +355,12 @@ export default function Stok() {
             placeholder="10"
           />
           {modalType === "penyesuaian" ? (
-            <Select
+            <SelectDropdown
               label="Alasan"
               value={form.reason}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, reason: e.target.value }))
-              }
-            >
-              {ADJUST_REASONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </Select>
+              onChange={(reason) => setForm((f) => ({ ...f, reason }))}
+              options={ADJUST_REASONS.map((r) => ({ value: r, label: r }))}
+            />
           ) : (
             <Textarea
               label="Keterangan"

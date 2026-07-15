@@ -3,7 +3,8 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
-import { Input, Select } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Field";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
@@ -213,17 +214,12 @@ export default function Kategori() {
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Contoh: Makanan"
           />
-          <Select
+          <SelectDropdown
             label="Icon"
             value={form.icon}
-            onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
-          >
-            {CATEGORY_ICONS.map((icon) => (
-              <option key={icon} value={icon}>
-                {icon}
-              </option>
-            ))}
-          </Select>
+            onChange={(icon) => setForm((f) => ({ ...f, icon }))}
+            options={CATEGORY_ICONS.map((icon) => ({ value: icon, label: icon }))}
+          />
           <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
             <i className={`fi ${form.icon}`} />
           </div>

@@ -3,7 +3,8 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
-import { Input, Select } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Field";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
@@ -179,19 +180,18 @@ export default function Produk() {
               className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100"
             />
           </div>
-          <select
+          <SelectDropdown
+            className="w-full sm:w-52"
             value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
+            onChange={(value) => {
+              setCategoryFilter(value);
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100"
-          >
-            <option value="all">Semua Kategori</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+            options={[
+              { value: "all", label: "Semua Kategori" },
+              ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
         </div>
 
         <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
@@ -325,12 +325,14 @@ export default function Produk() {
             </div>
           </div>
           <Input label="Nama Produk" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Contoh: Nasi Kucing" />
-          <Select label="Kategori" required value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
-            <option value="">Pilih kategori</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+          <SelectDropdown
+            label="Kategori"
+            required
+            placeholder="Pilih kategori"
+            value={form.categoryId}
+            onChange={(categoryId) => setForm((f) => ({ ...f, categoryId }))}
+            options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Harga (Rp)" type="number" required value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} placeholder="3000" />
             <Input

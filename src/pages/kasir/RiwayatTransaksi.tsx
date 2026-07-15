@@ -7,6 +7,7 @@ import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
 import { Modal } from "../../components/ui/Modal";
 import { RefreshButton } from "../../components/ui/RefreshButton";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { ReceiptModal } from "../../components/ReceiptModal";
 import { ProductAvatar } from "../../components/ProductAvatar";
 import { useAuth } from "../../context/AuthContext";
@@ -130,19 +131,20 @@ export default function RiwayatTransaksi() {
             }}
             className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100"
           />
-          <select
+          <SelectDropdown
+            className="w-full sm:w-48"
             value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
+            onChange={(value) => {
+              setStatusFilter(value);
               setPage(1);
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-100"
-          >
-            <option value="all">Semua Status</option>
-            <option value="selesai">Selesai</option>
-            <option value="ditahan">Ditahan</option>
-            <option value="dibatalkan">Dibatalkan</option>
-          </select>
+            options={[
+              { value: "all", label: "Semua Status" },
+              { value: "selesai", label: "Selesai" },
+              { value: "ditahan", label: "Ditahan" },
+              { value: "dibatalkan", label: "Dibatalkan" },
+            ]}
+          />
         </CardBody>
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">

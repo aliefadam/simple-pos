@@ -3,7 +3,8 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
-import { Input, Select, Textarea } from "../../components/ui/Field";
+import { Input, Textarea } from "../../components/ui/Field";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Pagination } from "../../components/ui/Pagination";
@@ -500,19 +501,12 @@ export default function Pengeluaran() {
             value={form.date}
             onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
           />
-          <Select
+          <SelectDropdown
             label="Kategori"
             value={form.category}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, category: e.target.value }))
-            }
-          >
-            {availableCategories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
+            onChange={(category) => setForm((f) => ({ ...f, category }))}
+            options={availableCategories.map((c) => ({ value: c, label: c }))}
+          />
           <Input
             label="Nominal (Rp)"
             type="number"

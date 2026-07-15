@@ -3,7 +3,8 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { Modal } from "../../components/ui/Modal";
-import { Input, Select } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Field";
+import { SelectDropdown } from "../../components/ui/SelectDropdown";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Skeleton, SkeletonRow } from "../../components/ui/Skeleton";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
@@ -269,10 +270,15 @@ export default function UserManagement() {
           <Input label="Nama Lengkap" required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
           <Input label="Username" required value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} />
           <Input label={editing ? "Password" : "Password Baru"} type="password" required={!editing} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder={editing ? "Kosongkan, gunakan reset password jika ingin mengubah" : "Masukkan password"} />
-          <Select label="Role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as Role }))}>
-            <option value="karyawan">Karyawan</option>
-            <option value="owner">Owner</option>
-          </Select>
+          <SelectDropdown
+            label="Role"
+            value={form.role}
+            onChange={(role) => setForm((f) => ({ ...f, role: role as Role }))}
+            options={[
+              { value: "karyawan", label: "Karyawan" },
+              { value: "owner", label: "Owner" },
+            ]}
+          />
           <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
             Akun aktif
